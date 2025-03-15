@@ -6,7 +6,7 @@ load_dotenv()
 
 # 优先使用Hugging Face Secrets中的API密钥
 DEEPSEEK_API_KEY = os.getenv('HF_DEEPSEEK_API_KEY')
-DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"  # 这是示例URL，需要根据实际API文档修改
+DEEPSEEK_API_URL = "https://api.deepseek.ai/v1/chat/completions"  # 更新为正确的API URL
 
 class DeepSeekService:
     def __init__(self):
@@ -25,27 +25,43 @@ class DeepSeekService:
             
         try:
             payload = {
-                "model": "deepseek-chat",  # 需要根据实际API文档修改
+                "model": "deepseek-chat-v1",  # 更新为正确的模型名称
                 "messages": [
-                    {"role": "user", "content": message}
-                ]
+                    {
+                        "role": "user",
+                        "content": message
+                    }
+                ],
+                "temperature": 0.7,
+                "max_tokens": 2000
             }
             
             response = requests.post(
                 DEEPSEEK_API_URL,
                 headers=self.headers,
-                json=payload
+                json=payload,
+                timeout=30  # 添加超时设置
             )
             
+            if response.status_code == 401:
+                print("API密钥无效或已过期")
+                return "API密钥验证失败，请联系管理员检查API密钥。"
+                
             response.raise_for_status()
             data = response.json()
             
-            # 根据实际API响应格式调整
-            return data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            # 根据DeepSeek API的实际响应格式获取回复
+            if "choices" in data and len(data["choices"]) > 0:
+                return data["choices"][0]["message"]["content"]
+            else:
+                return "抱歉，未能获取到有效回复。"
             
         except requests.exceptions.RequestException as e:
             print(f"Error calling DeepSeek API: {str(e)}")
-            return "抱歉，调用API时出现错误，请稍后再试。"
+            return f"抱歉，调用API时出现错误：{str(e)}"
+        except Exception as e:
+            print(f"Unexpected error: {str(e)}")
+            return "抱歉，处理请求时发生意外错误。"
 
 # 创建单例实例
 deepseek_service = DeepSeekService() 
