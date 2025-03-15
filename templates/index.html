@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyPath AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-blue-600">StudyPath AI</h1>
+            <p class="text-gray-600">Your Personal Academic Navigator</p>
+        </header>
+        
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h2 class="text-xl font-semibold mb-4">Course Recommendations</h2>
+            <div class="mb-4">
+                <label for="student-id" class="block text-gray-700 mb-2">Student ID:</label>
+                <input type="number" id="student-id" class="w-full p-2 border rounded" placeholder="Enter your student ID">
+            </div>
+            <button id="get-recommendations" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                Get Recommendations
+            </button>
+            
+            <div id="recommendations-container" class="mt-4 hidden">
+                <h3 class="font-medium mb-2">Recommended Courses:</h3>
+                <ul id="recommendations-list" class="list-disc pl-5"></ul>
+            </div>
+        </div>
+        
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-semibold mb-4">Your Current Schedule</h2>
+            <div class="mb-4">
+                <label for="schedule-student-id" class="block text-gray-700 mb-2">Student ID:</label>
+                <input type="number" id="schedule-student-id" class="w-full p-2 border rounded" placeholder="Enter your student ID">
+            </div>
+            <button id="get-schedule" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                View Schedule
+            </button>
+            
+            <div id="schedule-container" class="mt-4 hidden">
+                <h3 class="font-medium mb-2">Current Courses:</h3>
+                <ul id="schedule-list" class="list-disc pl-5"></ul>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Get recommendations
+        document.getElementById('get-recommendations').addEventListener('click', async () => {
+            const studentId = document.getElementById('student-id').value;
+            if (!studentId) {
+                alert('Please enter a student ID');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/recommendations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ student_id: studentId })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to get recommendations');
+                }
+                
+                const recommendations = await response.json();
+                const container = document.getElementById('recommendations-container');
+                const list = document.getElementById('recommendations-list');
+                
+                // Clear previous recommendations
+                list.innerHTML = '';
+                
+                // Add new recommendations
+                recommendations.forEach(course => {
+                    const li = document.createElement('li');
+                    li.textContent = `${course.code}: ${course.name} (${course.credits} credits)`;
+                    list.appendChild(li);
+                });
+                
+                // Show the container
+                container.classList.remove('hidden');
+            } catch (error) {
+                console.error(error);
+                alert('Error: ' + error.message);
+            }
+        });
+        
+        // Get schedule
+        document.getElementById('get-schedule').addEventListener('click', async () => {
+            const studentId = document.getElementById('schedule-student-id').value;
+            if (!studentId) {
+                alert('Please enter a student ID');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/students/${studentId}/courses`);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to get schedule');
+                }
+                
+                const enrollments = await response.json();
+                const container = document.getElementById('schedule-container');
+                const list = document.getElementById('schedule-list');
+                
+                // Clear previous schedule
+                list.innerHTML = '';
+                
+                // Add new schedule
+                enrollments.forEach(enrollment => {
+                    const li = document.createElement('li');
+                    li.textContent = `${enrollment.course_code} (${enrollment.semester}) - Status: ${enrollment.status}`;
+                    list.appendChild(li);
+                });
+                
+                // Show the container
+                container.classList.remove('hidden');
+            } catch (error) {
+                console.error(error);
+                alert('Error: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html> 
