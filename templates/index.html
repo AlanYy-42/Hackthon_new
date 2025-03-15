@@ -29,6 +29,21 @@
             </div>
         </div>
         
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h2 class="text-xl font-semibold mb-4">DeepSeek AI 助手</h2>
+            <div class="mb-4">
+                <div id="chat-messages" class="h-64 overflow-y-auto border rounded p-4 mb-4 bg-gray-50">
+                    <!-- 消息将在这里动态添加 -->
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" id="user-input" class="flex-1 p-2 border rounded" placeholder="输入你的问题...">
+                    <button id="send-message" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                        发送
+                    </button>
+                </div>
+            </div>
+        </div>
+        
         <div class="bg-white p-6 rounded-lg shadow-md">
             <h2 class="text-xl font-semibold mb-4">Your Current Schedule</h2>
             <div class="mb-4">
@@ -124,6 +139,67 @@
             } catch (error) {
                 console.error(error);
                 alert('Error: ' + error.message);
+            }
+        });
+        
+        // DeepSeek聊天功能
+        document.getElementById('send-message').addEventListener('click', async () => {
+            const userInput = document.getElementById('user-input');
+            const message = userInput.value.trim();
+            
+            if (!message) {
+                alert('请输入问题');
+                return;
+            }
+            
+            // 添加用户消息到聊天界面
+            addMessageToChat('user', message);
+            userInput.value = '';
+            
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to get response');
+                }
+                
+                const data = await response.json();
+                addMessageToChat('assistant', data.response);
+            } catch (error) {
+                console.error(error);
+                addMessageToChat('assistant', '抱歉，我现在无法回答。请稍后再试。');
+            }
+        });
+        
+        // 添加消息到聊天界面
+        function addMessageToChat(role, content) {
+            const chatMessages = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `mb-4 ${role === 'user' ? 'text-right' : 'text-left'}`;
+            
+            const messageBubble = document.createElement('div');
+            messageBubble.className = `inline-block p-3 rounded-lg ${
+                role === 'user' 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-gray-200 text-gray-800'
+            }`;
+            messageBubble.textContent = content;
+            
+            messageDiv.appendChild(messageBubble);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // 按Enter发送消息
+        document.getElementById('user-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('send-message').click();
             }
         });
     </script>
