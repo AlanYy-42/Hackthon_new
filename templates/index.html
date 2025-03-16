@@ -77,6 +77,84 @@
     <div id="course-planning" class="py-20 bg-gray-100">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 class="text-3xl font-bold text-center mb-12 text-gray-900">Course Planning</h2>
+            
+            <!-- Add user input form -->
+            <div class="bg-white p-6 rounded-xl shadow-md mb-8">
+                <h3 class="text-xl font-semibold text-blue-900 mb-6">Gemini Course Planning Assistant</h3>
+                <form id="course-planning-form" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-2">
+                            Student ID
+                        </label>
+                        <input 
+                            type="text" 
+                            id="student-id" 
+                            class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                            placeholder="Enter your student ID"
+                            required
+                        >
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-2">
+                            Current Semester
+                        </label>
+                        <input 
+                            type="text" 
+                            id="current-semester" 
+                            class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                            placeholder="e.g., Fall 2025"
+                            required
+                        >
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-2">
+                            Program Information (URL)
+                        </label>
+                        <input 
+                            type="text" 
+                            id="program-url" 
+                            class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                            placeholder="Enter university program URL"
+                            required
+                        >
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-2">
+                            Preferred Career Path
+                        </label>
+                        <input 
+                            type="text" 
+                            id="career-path" 
+                            class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                            placeholder="e.g., Machine Learning Engineer, Software Developer"
+                            required
+                        >
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-2">
+                            Academic Interests
+                        </label>
+                        <input 
+                            type="text" 
+                            id="interests" 
+                            class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                            placeholder="e.g., AI, Web Development, Data Science"
+                        >
+                    </div>
+                    
+                    <button 
+                        type="submit" 
+                        class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700"
+                    >
+                        Generate Course Plan
+                    </button>
+                </form>
+            </div>
+            
             <div class="bg-white p-6 rounded-xl shadow-md">
                 <div class="mb-6">
                     <canvas id="courseChart"></canvas>
@@ -127,6 +205,84 @@
     <div id="career-goals" class="py-20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 class="text-3xl font-bold text-center mb-12 text-gray-900">Career Goals</h2>
+            
+            <!-- Add user input form -->
+            <div class="bg-white p-6 rounded-xl shadow-md mb-8">
+                <h3 class="text-xl font-semibold text-blue-900 mb-6">Gemini Career Planning Assistant</h3>
+                <form id="career-goals-form" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-2">
+                            Full Name
+                        </label>
+                        <input 
+                            type="text" 
+                            id="full-name" 
+                            class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                            placeholder="Enter your full name"
+                            required
+                        >
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-2">
+                            Email Address
+                        </label>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                            placeholder="Enter your email address"
+                            required
+                        >
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-2">
+                            Educational Background
+                        </label>
+                        <input 
+                            type="text" 
+                            id="education" 
+                            class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                            placeholder="e.g., Bachelor's in Computer Science"
+                            required
+                        >
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-2">
+                            Preferred Job Titles
+                        </label>
+                        <input 
+                            type="text" 
+                            id="job-titles" 
+                            class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                            placeholder="e.g., Machine Learning Engineer, Data Scientist"
+                            required
+                        >
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-2">
+                            Work Experience (Years)
+                        </label>
+                        <input 
+                            type="text" 
+                            id="experience" 
+                            class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                            placeholder="e.g., 2 years in software development"
+                        >
+                    </div>
+                    
+                    <button 
+                        type="submit" 
+                        class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700"
+                    >
+                        Generate Learning Roadmap
+                    </button>
+                </form>
+            </div>
+            
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div class="bg-white p-6 rounded-xl shadow-md">
                     <h3 class="text-xl font-semibold text-blue-900 mb-6">Development Path</h3>
@@ -186,20 +342,64 @@
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 class="text-3xl font-bold text-center mb-12 text-gray-900">Feedback</h2>
             <div class="bg-white p-6 rounded-xl shadow-md">
-                <form class="space-y-6">
+                <form id="feedback-form" class="space-y-6">
                     <div>
                         <label class="block text-sm font-medium text-blue-900 mb-1">Name</label>
-                        <input type="text" class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter your name">
+                        <input 
+                            type="text" 
+                            id="feedback-name"
+                            class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                            placeholder="Enter your name"
+                            required
+                        >
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-blue-900 mb-1">Email</label>
-                        <input type="email" class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter your email address">
+                        <input 
+                            type="email" 
+                            id="feedback-email"
+                            class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                            placeholder="Enter your email address"
+                            required
+                        >
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Feedback Type</label>
+                        <select 
+                            id="feedback-category"
+                            class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option>Feature Suggestion</option>
+                            <option>Bug Report</option>
+                            <option>User Experience</option>
+                            <option>Other</option>
+                        </select>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-blue-900 mb-1">Message</label>
-                        <textarea class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" rows="4" placeholder="Please describe your feedback or suggestions..."></textarea>
+                        <textarea 
+                            id="feedback-message"
+                            class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                            rows="4" 
+                            placeholder="Please describe your feedback or suggestions..."
+                            required
+                        ></textarea>
                     </div>
-                    <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-500">
+                    <div class="flex items-center">
+                        <input
+                            id="feedback-terms"
+                            type="checkbox"
+                            class="h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+                            required
+                        >
+                        <label for="feedback-terms" class="ml-2 block text-sm text-blue-700">
+                            I agree to use this feedback to improve the service
+                        </label>
+                    </div>
+                    <button 
+                        type="submit" 
+                        class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700"
+                    >
                         Submit Feedback
                     </button>
                 </form>
@@ -207,10 +407,17 @@
         </div>
     </div>
 
+    <!-- Footer -->
+    <footer class="bg-blue-900 text-white py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <p>&copy; 2025 StudyPath.AI. All rights reserved.</p>
+        </div>
+    </footer>
+
     <script>
-        // Initialize course chart
+        // Course chart
         const ctx = document.getElementById('courseChart').getContext('2d');
-        new Chart(ctx, {
+        const courseChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: ['Spring 2024', 'Fall 2024', 'Spring 2025'],
@@ -223,70 +430,134 @@
                 }]
             },
             options: {
-                responsive: true,
                 scales: {
                     y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Credits'
-                        }
+                        beginAtZero: true
                     }
                 }
             }
         });
 
-        // AI Assistant functionality
-        document.getElementById('send-message')?.addEventListener('click', async () => {
-            const userInput = document.getElementById('user-input');
-            const message = userInput.value.trim();
+        // Handle course planning form submission
+        document.getElementById('course-planning-form').addEventListener('submit', function(e) {
+            e.preventDefault();
             
-            if (!message) {
-                alert('Please enter a question');
-                return;
-            }
+            const studentId = document.getElementById('student-id').value;
+            const currentSemester = document.getElementById('current-semester').value;
+            const programUrl = document.getElementById('program-url').value;
+            const careerPath = document.getElementById('career-path').value;
+            const interests = document.getElementById('interests').value;
             
-            try {
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ message: message })
+            // Show loading state
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalText = submitButton.textContent;
+            submitButton.textContent = 'Analyzing courses...';
+            submitButton.disabled = true;
+            
+            // Simulate API call
+            setTimeout(() => {
+                // Add actual API call here
+                console.log('Course planning form submitted:', {
+                    studentId,
+                    currentSemester,
+                    programUrl,
+                    careerPath,
+                    interests
                 });
                 
-                if (!response.ok) {
-                    throw new Error('Failed to get response');
-                }
+                // Restore button state
+                submitButton.textContent = originalText;
+                submitButton.disabled = false;
                 
-                const data = await response.json();
-                addMessageToChat('assistant', data.response);
-                userInput.value = '';
-            } catch (error) {
-                console.error(error);
-                alert('An error occurred. Please try again later.');
-            }
+                // Show success message
+                alert('Course plan generated successfully! Check the recommendations below.');
+                
+                // Scroll to recommendations section
+                document.querySelector('#course-planning .bg-white:nth-child(3)').scrollIntoView({
+                    behavior: 'smooth'
+                });
+            }, 2000);
         });
-
-        function addMessageToChat(role, content) {
-            const chatMessages = document.getElementById('chat-messages');
-            if (!chatMessages) return;
-
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `mb-4 ${role === 'user' ? 'text-right' : 'text-left'}`;
+        
+        // Handle career goals form submission
+        document.getElementById('career-goals-form').addEventListener('submit', function(e) {
+            e.preventDefault();
             
-            const messageBubble = document.createElement('div');
-            messageBubble.className = `inline-block p-3 rounded-lg ${
-                role === 'user' 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-200 text-gray-800'
-            }`;
-            messageBubble.textContent = content;
+            const fullName = document.getElementById('full-name').value;
+            const email = document.getElementById('email').value;
+            const education = document.getElementById('education').value;
+            const jobTitles = document.getElementById('job-titles').value;
+            const experience = document.getElementById('experience').value;
             
-            messageDiv.appendChild(messageBubble);
-            chatMessages.appendChild(messageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
+            // Show loading state
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalText = submitButton.textContent;
+            submitButton.textContent = 'Analyzing career path...';
+            submitButton.disabled = true;
+            
+            // Simulate API call
+            setTimeout(() => {
+                // Add actual API call here
+                console.log('Career goals form submitted:', {
+                    fullName,
+                    email,
+                    education,
+                    jobTitles,
+                    experience
+                });
+                
+                // Restore button state
+                submitButton.textContent = originalText;
+                submitButton.disabled = false;
+                
+                // Show success message
+                alert('Learning roadmap generated successfully! Check the recommendations below.');
+                
+                // Scroll to recommendations section
+                document.querySelector('#career-goals .grid').scrollIntoView({
+                    behavior: 'smooth'
+                });
+            }, 2000);
+        });
+        
+        // Handle feedback form submission
+        document.getElementById('feedback-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('feedback-name').value;
+            const email = document.getElementById('feedback-email').value;
+            const category = document.getElementById('feedback-category').value;
+            const message = document.getElementById('feedback-message').value;
+            const agreeTerms = document.getElementById('feedback-terms').checked;
+            
+            // Show loading state
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalText = submitButton.textContent;
+            submitButton.textContent = 'Submitting...';
+            submitButton.disabled = true;
+            
+            // Simulate API call
+            setTimeout(() => {
+                // Add actual API call here
+                console.log('Feedback form submitted:', {
+                    name,
+                    email,
+                    category,
+                    message,
+                    agreeTerms
+                });
+                
+                // Restore button state
+                submitButton.textContent = originalText;
+                submitButton.disabled = false;
+                
+                // Show success message
+                alert('Thank you for your feedback! We appreciate your input.');
+                
+                // Reset form
+                this.reset();
+            }, 1500);
+        });
     </script>
 </body>
 </html> 
