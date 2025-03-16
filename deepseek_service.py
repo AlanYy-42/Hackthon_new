@@ -1,5 +1,6 @@
 import os
-import google.generativeai as genai
+import requests
+import json
 from dotenv import load_dotenv
 import time
 
@@ -10,20 +11,15 @@ load_dotenv()
 time.sleep(1)
 
 # Safely get API key from environment variables
-GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
+API_KEY = os.getenv('API')
 
-print("GOOGLE_API_KEY loaded:", bool(GOOGLE_API_KEY))  # Only print if exists, not the actual value
+print("API key loaded:", bool(API_KEY))  # Only print if exists, not the actual value
 
-# Configure Gemini
-if GOOGLE_API_KEY:
-    try:
-        genai.configure(api_key=GOOGLE_API_KEY)
-        print("Gemini API configured successfully")
-    except Exception as e:
-        print(f"Error configuring Gemini API: {str(e)}")
-else:
-    print("WARNING: GOOGLE_API_KEY is missing! Set it as an environment variable.")
+# DeepSeek API configuration
+DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
+DEEPSEEK_MODEL = "deepseek-chat"  # Alternatively, use "deepseek-coder" for code-related tasks
 
+# System prompt
 SYSTEM_PROMPT = """You are a professional educational consultant assistant, specializing in helping students plan their learning paths and course selections. You should:
 1. Provide personalized recommendations based on students' completed courses and interests
 2. Consider course difficulty, prerequisites, and career development directions
@@ -121,69 +117,85 @@ Good luck with your career journey!""",
 
 class ChatService:
     def __init__(self):
-        self.api_key = GOOGLE_API_KEY
+        self.api_key = API_KEY
         self.api_key_loaded = self.api_key is not None
         self.api_key_valid = False
-        print(f"GOOGLE_API_KEY loaded: {self.api_key_loaded}")
+        self.chat_history = []
         
-        # Initialize chat session
-        self.chat_session = None
-        
+        # Test API key connection
         if self.api_key_loaded:
             try:
-                print("Creating ChatService instance...")
-                # Ensure API key is configured
-                genai.configure(api_key=self.api_key)
-                
-                # Try different model name formats
-                model_names = [
-                    "gemini-1.5-pro",
-                    "models/gemini-1.5-pro",
-                    "gemini-pro",
-                    "models/gemini-pro",
-                    "gemini-1.5-flash",
-                    "models/gemini-1.5-flash"
-                ]
-                
-                # Try each model name until successful
-                for model_name in model_names:
-                    try:
-                        print(f"Trying model: {model_name}")
-                        self.model = genai.GenerativeModel(model_name=model_name)
-                        self.chat_session = self.model.start_chat(history=[])
-                        print(f"Successfully initialized with model: {model_name}")
-                        
-                        # Send system prompt
-                        system_prompt = """You are StudyPath AI, an academic planning assistant. 
-                        Your goal is to help students plan their academic journey, recommend courses, 
-                        and provide guidance on career paths. Be helpful, informative, and supportive."""
-                        
-                        self.chat_session.send_message(system_prompt)
-                        self.api_key_valid = True
-                        break
-                    except Exception as e:
-                        print(f"Failed to initialize with model {model_name}: {str(e)}")
-                        continue
-                
-                if not self.chat_session:
-                    print("Failed to initialize with any model")
+                print("Testing DeepSeek API connection...")
+                self._test_api_connection()
+                self.api_key_valid = True
+                print("DeepSeek API connection successful")
             except Exception as e:
-                print(f"Error initializing chat service: {str(e)}")
-                self.chat_session = None
+                print(f"Error connecting to DeepSeek API: {str(e)}")
+                self.api_key_valid = False
         else:
-            print("Warning: GOOGLE_API_KEY not found in environment variables")
+            print("Warning: API key not found in environment variables")
+    
+    def _test_api_connection(self):
+        """Test API connection"""
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        data = {
+            "model": DEEPSEEK_MODEL,
+            "messages": [
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": "Hello"}
+            ],
+            "max_tokens": 10
+        }
+        
+        response = requests.post(DEEPSEEK_API_URL, headers=headers, json=data)
+        if response.status_code != 200:
+            raise Exception(f"API request failed with status code {response.status_code}: {response.text}")
     
     def send_message(self, message):
-        # Check if API key is valid and chat session is initialized
-        if self.api_key_valid and self.chat_session:
-            try:
-                response = self.chat_session.send_message(message)
-                return response.text
-            except Exception as e:
-                print(f"Error sending message: {str(e)}")
+        """Send message to DeepSeek API and get reply"""
+        if not self.api_key_loaded or not self.api_key_valid:
+            return self._get_mock_response(message)
+        
+        try:
+            # Add user message to history
+            self.chat_history.append({"role": "user", "content": message})
+            
+            # Prepare full message history
+            messages = [{"role": "system", "content": SYSTEM_PROMPT}] + self.chat_history
+            
+            # Call DeepSeek API
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            data = {
+                "model": DEEPSEEK_MODEL,
+                "messages": messages,
+                "max_tokens": 2000,
+                "temperature": 0.7
+            }
+            
+            response = requests.post(DEEPSEEK_API_URL, headers=headers, json=data)
+            
+            if response.status_code == 200:
+                response_data = response.json()
+                assistant_message = response_data["choices"][0]["message"]["content"]
+                
+                # Add assistant reply to history
+                self.chat_history.append({"role": "assistant", "content": assistant_message})
+                
+                return assistant_message
+            else:
+                print(f"API request failed with status code {response.status_code}: {response.text}")
                 return self._get_mock_response(message)
-        else:
-            # Use mock responses when API key is invalid
+                
+        except Exception as e:
+            print(f"Error sending message: {str(e)}")
             return self._get_mock_response(message)
     
     def _get_mock_response(self, message):
