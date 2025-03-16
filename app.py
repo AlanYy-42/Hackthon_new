@@ -5,12 +5,16 @@ from models import db, Course, Student, Enrollment
 from ml_service import recommender
 from deepseek_service import chat_service
 
-# Load environment variables
+# 确保在最开始就加载环境变量
 load_dotenv()
+
+# 打印环境变量（不包含实际值）用于调试
+print("Environment variables loaded:")
+print("HF_DEEPSEEK_API_KEY exists:", "HF_DEEPSEEK_API_KEY" in os.environ)
 
 # Initialize Flask app
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI', 'sqlite:///studypath.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI', 'sqlite:///instance/studypath.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize database
