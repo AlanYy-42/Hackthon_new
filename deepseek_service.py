@@ -58,95 +58,6 @@ Your primary goal is to create highly personalized academic plans based on the s
 
 Use a friendly, encouraging, and professional tone throughout your response, providing detailed explanations while remaining concise and focused on actionable advice."""
 
-# Mock responses for when API key is invalid
-MOCK_RESPONSES = {
-    "course_plan": """# Personalized Course Plan
-
-Based on your information, here's a customized course plan:
-
-## Recommended Courses
-
-1. **Data Structures & Algorithms** (CS201) - 4 credits
-   - This is a fundamental course for any programming-related career
-
-2. **Software Engineering** (SE301) - 3 credits
-   - Learn software development lifecycle and project management skills
-
-3. **Web Development** (WD401) - 4 credits
-   - Learn frontend and backend development technologies
-
-4. **Introduction to AI** (AI301) - 3 credits
-   - Based on your interest in AI, this course will provide AI fundamentals
-
-## Learning Path
-
-Current semester:
-- Data Structures & Algorithms
-- Software Engineering
-
-Next semester:
-- Web Development
-- Introduction to AI
-
-## Career Advice
-
-As a future software developer, I recommend:
-1. Participate in open-source projects to gain practical experience
-2. Build a personal project portfolio to showcase your skills
-3. Look for internship opportunities to gain industry experience
-
-Good luck with your studies!""",
-
-    "career_advice": """# Career Development Plan
-
-Based on your educational background and interests, here's a personalized career development plan:
-
-## Key Skills to Develop
-
-1. **Technical Skills**
-   - Programming languages: Python, JavaScript, Java
-   - Web development: HTML/CSS, React, Node.js
-   - Database management: SQL, MongoDB
-
-2. **Soft Skills**
-   - Communication and teamwork
-   - Problem-solving and critical thinking
-   - Time management and organization
-
-## Learning Resources
-
-1. **Online Courses**
-   - Coursera: "Machine Learning" by Stanford University
-   - Udemy: "The Complete Web Developer Bootcamp"
-   - edX: "CS50's Introduction to Computer Science" by Harvard
-
-2. **Books**
-   - "Clean Code" by Robert C. Martin
-   - "Cracking the Coding Interview" by Gayle Laakmann McDowell
-   - "The Pragmatic Programmer" by Andrew Hunt and David Thomas
-
-## Career Path Milestones
-
-1. **Short-term (0-1 years)**
-   - Complete fundamental programming courses
-   - Build a portfolio with 2-3 projects
-   - Obtain an internship or entry-level position
-
-2. **Medium-term (1-3 years)**
-   - Gain experience in a specific technology stack
-   - Contribute to open-source projects
-   - Consider specialization in AI, cloud, or cybersecurity
-
-3. **Long-term (3-5 years)**
-   - Move into a senior role or technical leadership
-   - Consider advanced degrees if aligned with goals
-   - Develop mentorship and leadership skills
-
-Good luck with your career journey!""",
-
-    "feedback_response": "Thank you for your feedback! We appreciate your input and will use it to improve our services."
-}
-
 class ChatService:
     def __init__(self):
         self.api_key = API_KEY
@@ -339,176 +250,124 @@ I can help you with:
 Please provide more details about your academic background and goals so I can give you more personalized advice."""
     
     def _generate_course_plan(self, semester, program, career, interests):
-        """Generate a personalized course plan based on extracted information"""
+        """使用DeepSeek API生成完整的课程推荐计划"""
+        # 如果API可用，直接使用DeepSeek生成课程计划
+        if self.api_key_valid:
+            prompt = f"""
+Design a full university course plan for a {program} major.
+- Assume the student is starting from {semester}.
+- Balance each semester with 15-18 credits.
+- Include both core and elective courses.
+- Align electives with career goal: {career} and interests: {interests}.
+- Output in structured Markdown format with:
+  - Each semester section MUST start with '### **Semester Name**'
+  - Each course MUST be listed as '1. **Course Name** (COURSE101) - 3 credits'
+  - Include a short description for each course
+  - Include 'Total Credits: XX' for each semester
+  - Include an 'Additional Recommendations' section
+  - Include a 'Summary' section
+"""
+            return self.send_message(prompt)
         
-        # Define courses based on program
-        courses = {
-            "Computer Science": [
-                {"name": "Data Structures & Algorithms", "code": "CS201", "credits": 4},
-                {"name": "Software Engineering", "code": "SE301", "credits": 3},
-                {"name": "Web Development", "code": "WD401", "credits": 4},
-                {"name": "Introduction to AI", "code": "AI301", "credits": 3},
-                {"name": "Database Systems", "code": "DB401", "credits": 3},
-                {"name": "Computer Networks", "code": "CN301", "credits": 3}
-            ],
-            "Business Administration": [
-                {"name": "Principles of Management", "code": "BUS201", "credits": 3},
-                {"name": "Financial Accounting", "code": "ACC301", "credits": 4},
-                {"name": "Marketing Fundamentals", "code": "MKT301", "credits": 3},
-                {"name": "Business Analytics", "code": "BA401", "credits": 3},
-                {"name": "Organizational Behavior", "code": "ORG301", "credits": 3}
-            ],
-            "Engineering": [
-                {"name": "Engineering Mathematics", "code": "EM201", "credits": 4},
-                {"name": "Mechanics of Materials", "code": "MM301", "credits": 3},
-                {"name": "Thermodynamics", "code": "TD301", "credits": 4},
-                {"name": "Control Systems", "code": "CS401", "credits": 3},
-                {"name": "Engineering Design", "code": "ED401", "credits": 4}
-            ]
-        }
+        # 如果API不可用，使用简化的模拟响应
+        # 解析用户输入的学期，格式应为"Fall 2025"或"Spring 2026"等
+        current_semester = semester
+        if not current_semester or "semester" in current_semester.lower():
+            current_semester = "Fall 2025"
         
-        # Select program courses or default to Computer Science
-        program_courses = courses.get(program, courses["Computer Science"])
+        # 提取学期和年份
+        parts = current_semester.split()
+        if len(parts) >= 2:
+            term = parts[0].lower()  # fall或spring
+            try:
+                year = int(parts[1])
+            except ValueError:
+                year = 2025
+        else:
+            term = "fall"
+            year = 2025
         
-        # 简化课程选择逻辑，减少处理时间
-        selected_courses = []
+        # 生成未来6个学期
+        semesters = []
+        for i in range(6):
+            if i == 0:
+                semesters.append(f"{term.capitalize()} {year}")
+            else:
+                if term.lower() == "fall":
+                    term = "Spring"
+                    year += 1
+                else:  # spring
+                    term = "Fall"
+                semesters.append(f"{term} {year}")
         
-        # 根据兴趣和职业目标选择课程
-        for course in program_courses:
-            if len(selected_courses) < 6:  # 限制课程数量
-                # 简单匹配逻辑
-                if any(keyword in course["name"].lower() for keyword in interests.lower().split(", ")):
-                    selected_courses.append(course)
-                elif any(keyword in course["name"].lower() for keyword in career.lower().split()):
-                    selected_courses.append(course)
-        
-        # 如果选择的课程不足，添加剩余的课程
-        while len(selected_courses) < 6 and len(program_courses) > len(selected_courses):
-            for course in program_courses:
-                if course not in selected_courses:
-                    selected_courses.append(course)
-                    break
-                if len(selected_courses) >= 6:
-                    break
-        
-        # 确保从Fall 2025开始
-        semesters = ["Fall 2025", "Spring 2026", "Fall 2026"]
-        
-        # 构建响应
+        # 构建简化的响应
         response = f"""# Personalized Course Plan for {program}
 
-Based on your interests in {interests} and career goal as a {career}, here's a customized course plan:
+Based on your interests in {interests} and career goal as a {career}, here's a comprehensive course plan from {semesters[0]} through graduation:
 
 """
         
-        # 为每个学期添加课程
-        for i, sem in enumerate(semesters):
-            response += f"""### **{sem}**
+        # 为每个学期添加简化的课程信息 - 确保格式与parseAIResponse函数匹配
+        for i, semester in enumerate(semesters):
+            total_credits = 16  # 默认学分总数
+            response += f"""### **{semester}**
+Total Credits: {total_credits}
+
+1. **Core {program} Course {i*2+1}** (CORE{201+i*100}) - 4 credits
+   - Essential course covering fundamental concepts in {program}.
+
+2. **Core {program} Course {i*2+2}** (CORE{202+i*100}) - 3 credits
+   - Advanced topics building on previous knowledge in {program}.
+
+3. **Elective related to {career}** (ELEC{203+i*100}) - 3 credits
+   - Specialized course aligned with your career goals.
+
+4. **General Education Course** (GEN{204+i*100}) - 3 credits
+   - Broadens your knowledge beyond your major.
+
+5. **Professional Development** (PROF{205+i*100}) - 3 credits
+   - Builds essential skills for your future career.
 
 """
-            # 每个学期分配2门课程
-            start_idx = i * 2
-            end_idx = min(start_idx + 2, len(selected_courses))
-            
-            for j in range(start_idx, end_idx):
-                course = selected_courses[j]
-                response += f"{j-start_idx+1}. **{course['name']}** ({course['code']}) - {course['credits']} credits\n"
-                
-                # 根据课程名称添加描述
-                if "data" in course["name"].lower():
-                    response += "   - Learn fundamental data structures and algorithm design principles\n\n"
-                elif "software" in course["name"].lower():
-                    response += "   - Master software development lifecycle and project management skills\n\n"
-                elif "web" in course["name"].lower():
-                    response += "   - Develop skills in frontend and backend web technologies\n\n"
-                elif "ai" in course["name"].lower() or "machine" in course["name"].lower():
-                    response += "   - Explore artificial intelligence concepts and applications\n\n"
-                elif "database" in course["name"].lower():
-                    response += "   - Learn database design, SQL, and data management principles\n\n"
-                elif "network" in course["name"].lower():
-                    response += "   - Understand computer networking protocols and architecture\n\n"
-                elif "management" in course["name"].lower():
-                    response += "   - Develop fundamental management and leadership skills\n\n"
-                elif "accounting" in course["name"].lower():
-                    response += "   - Master financial accounting principles and practices\n\n"
-                elif "marketing" in course["name"].lower():
-                    response += "   - Learn key marketing strategies and consumer behavior analysis\n\n"
-                elif "analytics" in course["name"].lower():
-                    response += "   - Develop data analysis skills for business decision-making\n\n"
-                elif "mathematics" in course["name"].lower():
-                    response += "   - Build strong mathematical foundations for engineering applications\n\n"
-                elif "mechanics" in course["name"].lower():
-                    response += "   - Study the behavior of materials under various loading conditions\n\n"
-                elif "thermodynamics" in course["name"].lower():
-                    response += "   - Understand energy transfer and conversion principles\n\n"
-                elif "control" in course["name"].lower():
-                    response += "   - Learn to design and analyze control systems\n\n"
-                elif "design" in course["name"].lower():
-                    response += "   - Apply engineering principles to practical design challenges\n\n"
-                else:
-                    response += "   - Essential course for your program and career goals\n\n"
         
-        # 添加额外建议
-        response += """## Additional Recommendations (12 credits)
+        # 添加额外建议 - 确保格式与parseAIResponse函数匹配
+        response += f"""## Additional Recommendations
 
-### Internships: - 3 credits
-Apply for summer internships in 2026 (after Spring 2026) to gain real-world experience. Look for roles in ML engineering, data science, or AI research.
+### Internships
+Apply for internships related to {career} to gain practical experience.
 
-### Certifications: - 3 credits
-Consider certifications like **Google Cloud Professional Machine Learning Engineer** or **AWS Certified Machine Learning Specialty** to enhance your resume.
+### Certifications
+Consider professional certifications that will enhance your marketability in {career}.
 
-### Extracurriculars: - 3 credits
-Join ML/AI clubs or participate in Kaggle competitions to build practical skills and network with peers.
-
-### Research Opportunities: - 3 credits
-Reach out to professors in Spring 2026 to explore research opportunities in ML or AI.
+### Extracurriculars
+Join student organizations related to {program} to build your network.
 
 ## Summary
 
-This plan balances theory and practice, ensuring you graduate with the skills and experience needed to excel as a Machine Learning Engineer. Let me know if you'd like further adjustments! 🚀
+This plan provides a balanced approach to your {program} education, with courses that will prepare you for a career as a {career}. Adjust as needed based on your university's specific requirements.
+
+Note: This is a simplified plan generated without API access. For a more detailed and personalized plan, please ensure the API key is configured correctly.
 """
         
         return response
     
     def _generate_career_advice(self, program, career, interests):
-        """Generate personalized career advice based on extracted information"""
+        """使用DeepSeek API生成个性化职业发展建议"""
+        # 如果API可用，直接使用DeepSeek生成职业建议
+        if self.api_key_valid:
+            prompt = f"""
+Based on a {program} background, generate a detailed career development plan for becoming a {career}.
+- Include key technical and soft skills needed.
+- Recommend specific online courses, books, and resources.
+- Outline short-term, mid-term, and long-term career goals.
+- Provide practical advice on gaining industry experience.
+- Include information about interests in: {interests}
+- Use a professional but friendly tone.
+- Format the response in Markdown with clear sections.
+"""
+            return self.send_message(prompt)
         
-        # Define skills based on career
-        skills = {
-            "Software Developer": [
-                "Programming (Python, JavaScript, Java)",
-                "Web development frameworks (React, Angular, Vue)",
-                "Version control (Git)",
-                "Problem-solving and algorithms",
-                "Database management"
-            ],
-            "Data Scientist": [
-                "Statistical analysis",
-                "Machine learning algorithms",
-                "Python and R programming",
-                "Data visualization",
-                "Big data technologies"
-            ],
-            "Business Analyst": [
-                "Data analysis",
-                "Requirements gathering",
-                "SQL and database querying",
-                "Business process modeling",
-                "Communication and presentation"
-            ],
-            "Engineer": [
-                "Technical design and documentation",
-                "CAD software proficiency",
-                "Mathematical modeling",
-                "Problem-solving",
-                "Project management"
-            ]
-        }
-        
-        # Select career skills or default to Software Developer
-        career_skills = skills.get(career, skills["Software Developer"])
-        
-        # Generate the response
+        # 如果API不可用，使用简化的模拟响应
         response = f"""# Career Development Plan for {career}
 
 Based on your background in {program} and interests in {interests}, here's a personalized career development plan:
@@ -516,13 +375,10 @@ Based on your background in {program} and interests in {interests}, here's a per
 ## Key Skills to Develop
 
 1. **Technical Skills**
-"""
-        
-        # Add technical skills
-        for i, skill in enumerate(career_skills[:3], 1):
-            response += f"   - {skill}\n"
-        
-        response += f"""
+   - Core {program} knowledge and principles
+   - Specialized skills related to {career}
+   - Tools and technologies commonly used in {career} roles
+
 2. **Soft Skills**
    - Communication and teamwork
    - Problem-solving and critical thinking
@@ -531,61 +387,50 @@ Based on your background in {program} and interests in {interests}, here's a per
 ## Learning Resources
 
 1. **Online Courses**
-"""
-        
-        # Add course recommendations based on interests and career
-        if "software" in career.lower() or "developer" in career.lower() or "programming" in interests.lower():
-            response += """   - Coursera: "Full-Stack Web Development with React" by Johns Hopkins University
-   - Udemy: "The Complete Web Developer Bootcamp"
-   - edX: "CS50's Introduction to Computer Science" by Harvard
-"""
-        elif "data" in career.lower() or "machine learning" in interests.lower() or "ai" in interests.lower():
-            response += """   - Coursera: "Machine Learning" by Stanford University
-   - Udemy: "Python for Data Science and Machine Learning Bootcamp"
-   - edX: "Data Science Essentials" by Microsoft
-"""
-        elif "business" in career.lower() or "management" in interests.lower():
-            response += """   - Coursera: "Business Foundations" by Wharton
-   - Udemy: "Business Analysis Fundamentals"
-   - edX: "Business Analytics for Decision Making" by Columbia
-"""
-        elif "engineer" in career.lower():
-            response += """   - Coursera: "Engineering Systems in Motion" by Georgia Tech
-   - Udemy: "The Complete Engineering Drawing Course"
-   - edX: "Engineering Mechanics" by MIT
-"""
-        else:
-            response += """   - Coursera: "Professional Skills for the Workplace"
-   - Udemy: "The Complete Job, Interview, Resume & Network Guide"
-   - edX: "Career Development: Skills for Success"
-"""
-        
-        response += f"""
+   - Courses related to {program} fundamentals
+   - Specialized courses for {career} roles
+   - Skill-building courses in {interests}
+
 2. **Books**
-   - "The Pragmatic Programmer" by Andrew Hunt and David Thomas
-   - "Cracking the Coding Interview" by Gayle Laakmann McDowell
-   - "Soft Skills: The Software Developer's Life Manual" by John Sonmez
+   - Industry-standard texts for {program}
+   - Career development guides for {career} professionals
+   - Technical references related to your field
 
 ## Career Path Milestones
 
 1. **Short-term (0-1 years)**
    - Complete fundamental courses in {program}
-   - Build a portfolio with 2-3 projects showcasing {interests}
-   - Obtain an internship or entry-level position related to {career}
+   - Build a portfolio showcasing {interests}
+   - Obtain an entry-level position related to {career}
 
 2. **Medium-term (1-3 years)**
-   - Gain experience in {interests}
-   - Contribute to open-source or community projects
-   - Consider specialization in {interests.split(", ")[0] if ", " in interests else interests}
+   - Gain experience in your chosen field
+   - Develop specialized expertise in {interests}
+   - Expand your professional network
 
 3. **Long-term (3-5 years)**
-   - Move into a senior {career} role
-   - Consider advanced degrees or certifications if aligned with goals
-   - Develop mentorship and leadership skills
+   - Move into more senior roles
+   - Consider advanced degrees or certifications
+   - Develop leadership skills
 
-Good luck with your career journey as a {career}!"""
+Note: This is a simplified plan generated without API access. For a more detailed and personalized plan, please ensure the API key is configured correctly.
+"""
         
         return response
+
+def get_courses_for_program(program_name):
+    """从数据库或外部API获取指定专业的课程"""
+    # 首先检查数据库中是否有该专业的课程
+    courses = database.query_courses(program_name)
+    
+    if courses:
+        return courses
+    else:
+        # 如果数据库中没有，使用AI生成合理的课程建议
+        ai_generated_courses = generate_courses_with_ai(program_name)
+        # 可选：将生成的课程保存到数据库中以供将来使用
+        database.save_courses(program_name, ai_generated_courses)
+        return ai_generated_courses
 
 # Create a singleton instance
 print("Creating ChatService instance...")
