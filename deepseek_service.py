@@ -3,32 +3,45 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 import time
 
-# 首先加载.env文件中的环境变量
+# First load environment variables from .env file
 load_dotenv()
 
-# 添加延迟，确保环境变量有时间加载
+# Add delay to ensure environment variables have time to load
 time.sleep(1)
 
-# 直接设置API密钥 - 这是Hugging Face空间提供的密钥
-GOOGLE_API_KEY = "AIzaSyDJC5a7hQxfvXRLNFzpTGfnAdOGjLYjHpI"
-os.environ['GOOGLE_API_KEY'] = GOOGLE_API_KEY
+# Safely get API key
+GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 
-print("GOOGLE_API_KEY loaded:", bool(GOOGLE_API_KEY))  # 只打印是否存在，不打印实际值
+# If API key is not in environment variables, try to get from other sources
+if not GOOGLE_API_KEY:
+    try:
+        # Try to read directly from .env file
+        with open('.env', 'r') as f:
+            for line in f:
+                if line.startswith('GOOGLE_API_KEY='):
+                    GOOGLE_API_KEY = line.strip().split('=', 1)[1].strip('"\'')
+                    os.environ['GOOGLE_API_KEY'] = GOOGLE_API_KEY
+                    break
+    except Exception as e:
+        print(f"Error reading .env file: {str(e)}")
 
-# 配置Gemini
+print("GOOGLE_API_KEY loaded:", bool(GOOGLE_API_KEY))  # Only print if exists, not the actual value
+
+# Configure Gemini
 if GOOGLE_API_KEY:
     try:
         genai.configure(api_key=GOOGLE_API_KEY)
         print("Gemini API configured successfully")
     except Exception as e:
         print(f"Error configuring Gemini API: {str(e)}")
+else:
+    print("WARNING: GOOGLE_API_KEY is missing! Set it as an environment variable.")
 
-SYSTEM_PROMPT = """你是一个专业的教育顾问助手，专门帮助学生规划他们的学习路径和课程选择。你应该：
-1. 基于学生已修课程和兴趣提供个性化建议
-2. 考虑课程难度、先修要求和职业发展方向
-3. 给出具体的课程推荐和学习规划
-4. 使用友好专业的语气，提供详细的解释
-请用中文回答问题。"""
+SYSTEM_PROMPT = """You are a professional educational consultant assistant, specializing in helping students plan their learning paths and course selections. You should:
+1. Provide personalized recommendations based on students' completed courses and interests
+2. Consider course difficulty, prerequisites, and career development directions
+3. Give specific course recommendations and learning plans
+4. Use a friendly and professional tone, providing detailed explanations"""
 
 class ChatService:
     def __init__(self):
@@ -42,10 +55,10 @@ class ChatService:
         if self.api_key_loaded:
             try:
                 print("Creating ChatService instance...")
-                # 确保API密钥已配置
+                # Ensure API key is configured
                 genai.configure(api_key=self.api_key)
                 
-                # 尝试使用不同的模型名称格式
+                # Try different model name formats
                 model_names = [
                     "gemini-1.5-pro",
                     "models/gemini-1.5-pro",
@@ -55,7 +68,7 @@ class ChatService:
                     "models/gemini-1.5-flash"
                 ]
                 
-                # 尝试每个模型名称，直到成功
+                # Try each model name until successful
                 for model_name in model_names:
                     try:
                         print(f"Trying model: {model_name}")
@@ -63,7 +76,7 @@ class ChatService:
                         self.chat_session = self.model.start_chat(history=[])
                         print(f"Successfully initialized with model: {model_name}")
                         
-                        # 发送系统提示词
+                        # Send system prompt
                         system_prompt = """You are StudyPath AI, an academic planning assistant. 
                         Your goal is to help students plan their academic journey, recommend courses, 
                         and provide guidance on career paths. Be helpful, informative, and supportive."""
@@ -84,11 +97,11 @@ class ChatService:
     
     def send_message(self, message):
         if not self.api_key_loaded:
-            return "API密钥未配置。请联系管理员设置Google API密钥。"
+            return "API key not configured. Please contact the administrator to set up the Google API key."
         
         if self.chat_session is None:
             try:
-                # 尝试重新初始化聊天会话
+                # Try to reinitialize chat session
                 model_names = [
                     "gemini-1.5-pro",
                     "models/gemini-1.5-pro",
@@ -110,16 +123,16 @@ class ChatService:
                         continue
                 
                 if not self.chat_session:
-                    return "无法初始化聊天服务，请稍后再试。"
+                    return "Unable to initialize chat service, please try again later."
             except Exception as e:
-                return f"聊天服务初始化失败: {str(e)}"
+                return f"Chat service initialization failed: {str(e)}"
         
         try:
             response = self.chat_session.send_message(message)
             return response.text
         except Exception as e:
             print(f"Error sending message: {str(e)}")
-            return f"发送消息时出错: {str(e)}"
+            return f"Error sending message: {str(e)}"
 
 # Create a singleton instance
 print("Creating ChatService instance...")
