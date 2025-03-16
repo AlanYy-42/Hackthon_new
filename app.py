@@ -96,8 +96,15 @@ def crawl_program():
     # 不再检查API密钥，直接尝试爬取
     try:
         print(f"尝试爬取URL: {url}")
+        # 使用更友好的请求头，模拟浏览器
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5'
+        }
+        
         # Fetch the webpage content
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, headers=headers, timeout=15)
         response.raise_for_status()  # Raise an exception for 4XX/5XX responses
         
         print(f"成功获取网页内容，长度: {len(response.text)}")
@@ -105,49 +112,155 @@ def crawl_program():
         # Parse the HTML content
         soup = BeautifulSoup(response.text, 'html.parser')
         
+        # 提取所有文本内容，用于更全面的分析
+        all_text = soup.get_text()
+        print(f"提取的文本内容长度: {len(all_text)}")
+        
         # Extract program information
         program_info = {
             "title": "",
             "description": "",
             "courses": [],
             "requirements": [],
-            "credits": ""
+            "credits": "",
+            "raw_text_sample": all_text[:1000]  # 添加原始文本样本用于调试
         }
         
-        # Try to find program title (usually in h1 or h2 tags)
-        title_tags = soup.find_all(['h1', 'h2'])
-        if title_tags:
-            program_info["title"] = title_tags[0].get_text().strip()
+        # 尝试多种方式提取标题
+        title_candidates = []
+        # 方法1: 常见标题标签
+        for tag in ['h1', 'h2', 'h3']:
+            elements = soup.find_all(tag)
+            for el in elements:
+                title_text = el.get_text().strip()
+                if len(title_text) > 5 and len(title_text) < 100:  # 合理的标题长度
+                    title_candidates.append(title_text)
+        
+        # 方法2: 包含"program"、"degree"、"major"等关键词的元素
+        for keyword in ['program', 'degree', 'major', 'bachelor', 'master', 'computer science', 'curriculum']:
+            elements = soup.find_all(string=re.compile(keyword, re.IGNORECASE))
+            for el in elements:
+                if el.parent.name in ['h1', 'h2', 'h3', 'h4', 'strong', 'b', 'div', 'p']:
+                    title_text = el.parent.get_text().strip()
+                    if len(title_text) > 5 and len(title_text) < 100:  # 合理的标题长度
+                        title_candidates.append(title_text)
+        
+        # 选择最可能的标题
+        if title_candidates:
+            program_info["title"] = title_candidates[0]
             print(f"找到标题: {program_info['title']}")
         
-        # Try to find program description (usually in p tags near the title)
-        desc_tags = soup.find_all('p', limit=5)
-        if desc_tags:
-            program_info["description"] = " ".join([p.get_text().strip() for p in desc_tags[:2]])
-            print(f"找到描述: {program_info['description'][:100]}...")
+        # 提取课程信息 - 使用多种模式
+        course_patterns = [
+            r'[A-Z]{2,4}\s*\d{3,4}[A-Z]?',  # 如 CS101, MATH101A
+            r'[A-Z]{2,4}\s*\d{3,4}[A-Z]?\s*[-:]\s*[A-Za-z\s]+',  # 如 CS101 - Introduction to Programming
+            r'[A-Za-z\s]+\s*\(\s*[A-Z]{2,4}\s*\d{3,4}[A-Z]?\s*\)'  # 如 Introduction to Programming (CS101)
+        ]
         
-        # Look for course information
-        # This is a simplified approach - actual implementation would need to be tailored to specific websites
-        course_elements = soup.find_all(['li', 'div'], string=re.compile(r'[A-Z]{2,4}\s*\d{3,4}'))
-        for element in course_elements[:10]:  # Limit to first 10 courses found
-            course_text = element.get_text().strip()
-            program_info["courses"].append(course_text)
+        all_courses = []
+        for pattern in course_patterns:
+            # 在文本中查找
+            matches = re.findall(pattern, all_text)
+            if matches:
+                for match in matches:
+                    match = match.strip()
+                    if match not in all_courses and len(match) > 3:
+                        all_courses.append(match)
         
+        # 限制课程数量
+        program_info["courses"] = all_courses[:20]  # 最多20门课程
         print(f"找到课程数量: {len(program_info['courses'])}")
         
-        # Look for credit requirements
-        credit_elements = soup.find_all(string=re.compile(r'credits|credit hours', re.IGNORECASE))
-        if credit_elements:
-            for element in credit_elements:
-                if re.search(r'\d+\s*credits|\d+\s*credit hours', element, re.IGNORECASE):
-                    program_info["credits"] = element.strip()
-                    print(f"找到学分要求: {program_info['credits']}")
-                    break
+        # 如果没有找到课程，尝试查找列表项
+        if not program_info["courses"]:
+            list_items = soup.find_all('li')
+            for item in list_items:
+                item_text = item.get_text().strip()
+                # 如果列表项看起来像课程（包含数字和字母）
+                if re.search(r'\d+', item_text) and len(item_text) > 10 and len(item_text) < 200:
+                    program_info["courses"].append(item_text)
+                    if len(program_info["courses"]) >= 20:
+                        break
         
-        # If we couldn't find specific information, provide a general summary
+        # 提取学分要求
+        credit_patterns = [
+            r'\d+\s*credits',
+            r'\d+\s*credit\s*hours',
+            r'total\s*of\s*\d+\s*credits',
+            r'minimum\s*of\s*\d+\s*credits',
+            r'requires\s*\d+\s*credits'
+        ]
+        
+        for pattern in credit_patterns:
+            matches = re.findall(pattern, all_text, re.IGNORECASE)
+            if matches:
+                program_info["credits"] = matches[0]
+                print(f"找到学分要求: {program_info['credits']}")
+                break
+        
+        # 提取描述 - 尝试找到介绍段落
+        desc_candidates = []
+        
+        # 查找包含关键词的段落
+        for keyword in ['overview', 'introduction', 'about', 'description', 'program', 'curriculum']:
+            elements = soup.find_all(string=re.compile(keyword, re.IGNORECASE))
+            for el in elements:
+                if el.parent.name == 'p':
+                    desc_text = el.parent.get_text().strip()
+                    if len(desc_text) > 50:  # 只考虑较长的段落
+                        desc_candidates.append(desc_text)
+                elif el.parent.parent and el.parent.parent.name == 'p':
+                    desc_text = el.parent.parent.get_text().strip()
+                    if len(desc_text) > 50:
+                        desc_candidates.append(desc_text)
+        
+        # 如果没有找到，使用前几个段落
+        if not desc_candidates:
+            paragraphs = soup.find_all('p')
+            for p in paragraphs[:5]:
+                p_text = p.get_text().strip()
+                if len(p_text) > 50:  # 只考虑较长的段落
+                    desc_candidates.append(p_text)
+        
+        if desc_candidates:
+            program_info["description"] = desc_candidates[0]
+            print(f"找到描述: {program_info['description'][:100]}...")
+        
+        # 提取要求
+        req_candidates = []
+        req_keywords = ['requirement', 'prerequisite', 'admission', 'criteria', 'eligibility']
+        
+        for keyword in req_keywords:
+            elements = soup.find_all(string=re.compile(keyword, re.IGNORECASE))
+            for el in elements:
+                parent = el.parent
+                # 尝试获取包含要求的段落或列表
+                if parent.name == 'p':
+                    req_candidates.append(parent.get_text().strip())
+                elif parent.name in ['li', 'div']:
+                    req_candidates.append(parent.get_text().strip())
+                # 尝试获取父元素后的列表项
+                next_ul = parent.find_next('ul')
+                if next_ul:
+                    for li in next_ul.find_all('li'):
+                        req_text = li.get_text().strip()
+                        if len(req_text) > 10:
+                            req_candidates.append(req_text)
+        
+        # 限制要求数量
+        program_info["requirements"] = req_candidates[:10]  # 最多10个要求
+        
+        # 如果仍然没有找到足够的信息，使用默认值
+        if not program_info["title"]:
+            program_info["title"] = "Computer Science Program"
+            print("未找到标题，使用默认值")
+        
+        if not program_info["description"]:
+            program_info["description"] = "A comprehensive program covering fundamental and advanced topics in computer science."
+            print("未找到描述，使用默认值")
+        
         if not program_info["courses"]:
             print("未找到课程信息，使用默认数据")
-            # 如果无法提取课程信息，返回一些示例数据
             program_info["courses"] = [
                 "Introduction to Computer Science - CS101",
                 "Data Structures - CS201",
@@ -156,15 +269,9 @@ def crawl_program():
                 "Software Engineering - CS501"
             ]
         
-        # 如果没有找到任何信息，提供一些基本信息
-        if not program_info["title"]:
-            program_info["title"] = "Computer Science Program"
-        
-        if not program_info["description"]:
-            program_info["description"] = "A comprehensive program covering fundamental and advanced topics in computer science."
-        
         if not program_info["credits"]:
             program_info["credits"] = "120 credits required for graduation"
+            print("未找到学分要求，使用默认值")
         
         return jsonify(program_info)
         
