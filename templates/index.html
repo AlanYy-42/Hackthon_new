@@ -536,14 +536,21 @@
                     <h3 class="text-lg font-semibold text-blue-900 mb-4">Your Personalized Course Plan</h3>
                     
                     <!-- 图表容器 -->
-                    <div class="mb-6">
-                        <canvas id="semesterChart" width="400" height="200"></canvas>
+                    <div class="mb-6" style="height: 300px;">
+                        <canvas id="semesterChart"></canvas>
                     </div>
                     
                     <!-- 学期课程详情 -->
                     <div id="semesterDetails" class="mb-6">
                         ${generateSemesterDetailsHTML(parsedResponse.semesters)}
                     </div>
+                    
+                    <!-- Additional Recommendations -->
+                    ${parsedResponse.additionalRecommendations ? `
+                    <div class="mt-4 p-3 bg-blue-100 rounded-lg">
+                        <h4 class="font-semibold text-blue-900 mb-2">Additional Recommendations</h4>
+                        <div class="text-blue-800">${parsedResponse.additionalRecommendations}</div>
+                    </div>` : ''}
                     
                     <!-- 总结 -->
                     <div class="mt-4 p-3 bg-blue-100 rounded-lg">
@@ -798,7 +805,8 @@
             // 初始化结果对象
             const result = {
                 semesters: [],
-                summary: ""
+                summary: "",
+                additionalRecommendations: ""
             };
             
             // 尝试提取学期信息
@@ -831,20 +839,30 @@
                     });
                 }
                 
-                result.semesters.push({
-                    name: semesterName,
-                    courses: courses,
-                    totalCredits: courses.reduce((sum, course) => sum + course.credits, 0)
-                });
+                // 只添加实际学期，不添加"Additional Recommendations"
+                if (!semesterName.includes("Additional")) {
+                    result.semesters.push({
+                        name: semesterName,
+                        courses: courses,
+                        totalCredits: courses.reduce((sum, course) => sum + course.credits, 0)
+                    });
+                }
             }
             
-            // 提取总结
-            const summaryRegex = /##\s*Additional\s*Recommendations([\s\S]*?)$/i;
+            // 提取Additional Recommendations部分
+            const additionalRegex = /##\s*Additional\s*Recommendations([\s\S]*?)(?=##|$)/i;
+            const additionalMatch = response.match(additionalRegex);
+            if (additionalMatch) {
+                result.additionalRecommendations = additionalMatch[1].trim();
+            }
+            
+            // 提取总结或使用最后一段
+            const summaryRegex = /##\s*Summary([\s\S]*?)(?=##|$)/i;
             const summaryMatch = response.match(summaryRegex);
             if (summaryMatch) {
                 result.summary = summaryMatch[1].trim();
             } else {
-                // 如果没有找到"Additional Recommendations"部分，使用最后一段作为总结
+                // 如果没有找到"Summary"部分，使用最后一段作为总结
                 const paragraphs = response.split('\n\n');
                 if (paragraphs.length > 0) {
                     result.summary = paragraphs[paragraphs.length - 1].trim();
@@ -918,6 +936,14 @@
             // 准备数据
             const labels = semesters.map(s => s.name);
             const data = semesters.map(s => s.totalCredits);
+            
+            // 确保每个学期都有数据，如果没有则设置默认值
+            for (let i = 0; i < data.length; i++) {
+                if (!data[i] || data[i] === 0) {
+                    data[i] = 15; // 默认学分数
+                }
+            }
+            
             const backgroundColors = semesters.map((_, i) => 
                 `rgba(${37 + i * 20}, ${99 + i * 10}, ${235 - i * 20}, 0.7)`
             );
@@ -936,6 +962,8 @@
                     }]
                 },
                 options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
                         y: {
                             beginAtZero: true,
