@@ -18,7 +18,7 @@ print("API exists:", "API" in os.environ)
 
 # Initialize Flask app
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///C:/Users/Administrator/Hackathon/instance/studypath.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///studypath.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize database

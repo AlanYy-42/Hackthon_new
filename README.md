@@ -51,10 +51,10 @@ An intelligent academic planning assistant powered by Edge AI technology, provid
 3. Environment Variables:
    Create a `.env` file and set the following variables:
    ```
-   DATABASE_URI=sqlite:///instance/studypath.db
+   DATABASE_URI=sqlite:///studypath.db
    FLASK_APP=app.py
    FLASK_ENV=production
-   GOOGLE_API_KEY=your_api_key
+   API=your_deepseek_api_key
    ```
 
 4. Initialize Database:
@@ -96,10 +96,10 @@ MIT License
 
 ### API密钥配置
 
-本应用使用Google Gemini API进行AI聊天功能。你需要：
+本应用使用DeepSeek API进行AI聊天功能。你需要：
 
-1. 在[Google AI Studio](https://ai.google.dev/)创建一个账户
+1. 在[DeepSeek Platform](https://platform.deepseek.com/)创建一个账户
 2. 生成API密钥
-3. 将API密钥添加到.env文件中的GOOGLE_API_KEY变量
+3. 将API密钥添加到.env文件中的API变量
 
 **重要提示：** 不要在代码中硬编码API密钥，也不要将包含真实API密钥的.env文件提交到版本控制系统。 
