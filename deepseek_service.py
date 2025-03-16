@@ -24,11 +24,9 @@ class ChatService:
             return "API密钥未配置，请联系管理员设置API密钥。"
             
         try:
-            # 使用最简单的输入格式
+            # 直接使用文本作为输入
             payload = {
-                "inputs": {
-                    "text": message
-                }
+                "inputs": message
             }
             
             print(f"Sending request to Hugging Face API")  # 调试日志
@@ -46,6 +44,9 @@ class ChatService:
             if response.status_code == 401:
                 print("API密钥无效或已过期")
                 return "API密钥验证失败，请联系管理员检查API密钥。"
+            elif response.status_code == 503:
+                print("模型正在加载中")
+                return "模型正在加载中，请稍后再试。"
             
             try:
                 print(f"Response content: {response.text}")  # 调试日志
@@ -57,15 +58,11 @@ class ChatService:
             
             print(f"Parsed response data: {data}")  # 调试日志
             
-            # 解析响应
-            if isinstance(data, list) and len(data) > 0:
-                # DialoGPT通常返回一个生成的文本列表
-                return data[0].get('generated_text', '抱歉，未能获取到有效回复。')
-            elif isinstance(data, dict):
-                # 有时可能返回字典格式
-                return data.get('generated_text', data.get('answer', '抱歉，未能获取到有效回复。'))
+            # 直接返回生成的文本
+            if isinstance(data, list):
+                return data[0]
             else:
-                return str(data) if data else "抱歉，未能获取到有效回复。"
+                return str(data)
             
         except requests.exceptions.RequestException as e:
             print(f"Error calling Hugging Face API: {str(e)}")
