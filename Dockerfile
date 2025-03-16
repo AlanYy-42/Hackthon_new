@@ -15,6 +15,11 @@ RUN mkdir -p instance
 ENV PYTHONPATH=/app
 ENV FLASK_APP=app.py
 ENV FLASK_ENV=production
+ENV HF_DEEPSEEK_API_KEY=${HF_DEEPSEEK_API_KEY}
+
+# 打印环境变量状态（不显示值）
+RUN echo "Checking environment variables:" && \
+    echo "HF_DEEPSEEK_API_KEY exists: ${HF_DEEPSEEK_API_KEY:+true}"
 
 # 初始化数据库
 RUN python seed_db.py
