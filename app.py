@@ -14,11 +14,11 @@ load_dotenv()
 
 # Print environment variables (without actual values) for debugging
 print("Environment variables loaded:")
-print("GOOGLE_API_KEY exists:", "GOOGLE_API_KEY" in os.environ)
+print("API exists:", "API" in os.environ)
 
 # Initialize Flask app
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI', 'sqlite:///instance/studypath.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///C:/Users/Administrator/Hackathon/instance/studypath.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize database
@@ -46,7 +46,7 @@ def crawl_program():
     url = data['url']
     
     # 检查API密钥是否可用
-    if not os.getenv('GOOGLE_API_KEY'):
+    if not os.getenv('API'):
         return jsonify({
             "error": "API key not configured",
             "title": "Sample Program",
@@ -219,10 +219,10 @@ def get_student_progress(student_id):
         "completion_percentage": (completed_credits / total_credits * 100) if total_credits > 0 else 0
     })
 
-# Create database tables
-@app.before_first_request
-def create_tables():
+# 替换@app.before_first_request装饰器
+with app.app_context():
     db.create_all()
+    print("Database tables created.")
 
 if __name__ == '__main__':
     # Get port, Hugging Face Space uses port 7860
