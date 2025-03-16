@@ -1001,14 +1001,14 @@
                     onClick: (event, elements) => {
                         if (elements.length > 0) {
                             const index = elements[0].index;
-                            showSemesterDetails(index);
+                            showSemesterDetail(index);
                         }
                     }
                 }
             });
             
             // 显示指定学期的详情
-            function showSemesterDetails(index) {
+            function showSemesterDetail(index) {
                 // 隐藏所有学期详情
                 document.querySelectorAll('.course-detail').forEach(el => {
                     el.classList.remove('active');
@@ -1022,6 +1022,74 @@
             }
         }
 
+        // 渲染学期详情
+        function renderSemesters(semesters) {
+            console.log("渲染学期详情:", semesters);
+            
+            // 生成学期详情HTML
+            const semestersHTML = generateSemesterDetailsHTML(semesters);
+            
+            // 更新DOM
+            const semesterDetailsContainer = document.getElementById('semester-details');
+            if (semesterDetailsContainer) {
+                semesterDetailsContainer.innerHTML = semestersHTML;
+            } else {
+                console.error("找不到semester-details容器");
+            }
+            
+            // 更新学期选择器
+            const semesterSelector = document.getElementById('semester-selector');
+            if (semesterSelector) {
+                semesterSelector.innerHTML = '';
+                
+                semesters.forEach((semester, index) => {
+                    const button = document.createElement('button');
+                    button.className = `px-4 py-2 text-sm font-medium ${index === 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'} rounded-md hover:bg-blue-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500`;
+                    button.textContent = semester.name;
+                    button.onclick = () => showSemesterDetail(index);
+                    
+                    semesterSelector.appendChild(button);
+                });
+            } else {
+                console.error("找不到semester-selector容器");
+            }
+            
+            // 更新当前学期显示
+            const currentSemesterElement = document.getElementById('current-semester-display');
+            if (currentSemesterElement && semesters.length > 0) {
+                // 确保学分数据正确
+                const credits = semesters[0].totalCredits && semesters[0].totalCredits > 0 ? 
+                    semesters[0].totalCredits : 15;
+                currentSemesterElement.textContent = `${semesters[0].name} (${credits} credits)`;
+            }
+        }
+
+        // 显示特定学期详情
+        function showSemesterDetail(index) {
+            // 隐藏所有学期详情
+            document.querySelectorAll('.course-detail').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // 显示选中的学期详情
+            const selectedSemester = document.getElementById(`semester-${index}`);
+            if (selectedSemester) {
+                selectedSemester.classList.add('active');
+            }
+            
+            // 更新按钮样式
+            document.querySelectorAll('#semester-selector button').forEach((button, i) => {
+                if (i === index) {
+                    button.classList.remove('bg-gray-200', 'text-gray-700');
+                    button.classList.add('bg-blue-600', 'text-white');
+                } else {
+                    button.classList.remove('bg-blue-600', 'text-white');
+                    button.classList.add('bg-gray-200', 'text-gray-700');
+                }
+            });
+        }
+
+        // 生成课程计划
         function generateCoursePlan() {
             // 获取表单数据
             const programUrl = document.getElementById('program-url').value;
@@ -1043,6 +1111,8 @@
                 requirements: requirements
             };
             
+            console.log("发送请求数据:", requestData);
+            
             // 调用API
             fetch('/api/chat', {
                 method: 'POST',
@@ -1058,6 +1128,8 @@
             })
             .then(response => response.json())
             .then(data => {
+                console.log("API响应:", data);
+                
                 // 隐藏加载状态
                 document.getElementById('loading-indicator').classList.add('hidden');
                 document.getElementById('course-plan-container').classList.remove('hidden');
