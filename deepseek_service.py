@@ -6,7 +6,7 @@ load_dotenv()
 
 # 使用Hugging Face的API
 HF_API_KEY = os.getenv('HF_DEEPSEEK_API_KEY')
-HF_API_URL = "https://api-inference.huggingface.co/models/deepseek-ai/deepseek-coder-7b-instruct"
+HF_API_URL = "https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium"
 
 SYSTEM_PROMPT = """你是一个专业的教育顾问助手，专门帮助学生规划他们的学习路径和课程选择。你应该：
 1. 基于学生已修课程和兴趣提供个性化建议
@@ -22,8 +22,7 @@ class ChatService:
             self.headers = None
         else:
             self.headers = {
-                "Authorization": f"Bearer {HF_API_KEY}",
-                "Content-Type": "application/json"
+                "Authorization": f"Bearer {HF_API_KEY}"
             }
     
     def chat(self, message):
@@ -41,12 +40,12 @@ class ChatService:
                     "inputs": formatted_input,
                     "parameters": {
                         "temperature": 0.7,
-                        "max_new_tokens": 1000,
+                        "max_length": 1000,
                         "top_p": 0.95,
-                        "do_sample": True
+                        "return_full_text": False
                     }
                 },
-                timeout=60  # 增加超时时间
+                timeout=60
             )
             
             print(f"Response status code: {response.status_code}")
@@ -71,11 +70,6 @@ class ChatService:
                 if isinstance(data, list) and len(data) > 0:
                     generated_text = data[0].get('generated_text', '')
                     # 提取助手的回答部分
-                    if '助手:' in generated_text:
-                        return generated_text.split('助手:')[-1].strip()
-                    return generated_text
-                elif isinstance(data, dict) and 'generated_text' in data:
-                    generated_text = data['generated_text']
                     if '助手:' in generated_text:
                         return generated_text.split('助手:')[-1].strip()
                     return generated_text
