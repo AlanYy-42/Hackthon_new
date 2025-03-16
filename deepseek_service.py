@@ -6,7 +6,7 @@ load_dotenv()
 
 # 优先使用Hugging Face Secrets中的API密钥
 DEEPSEEK_API_KEY = os.getenv('HF_DEEPSEEK_API_KEY')
-DEEPSEEK_API_URL = "https://api.deepseek.ai/v1/chat/completions"  # 更新为正确的API URL
+DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"  # 修改为正确的域名
 
 class DeepSeekService:
     def __init__(self):
@@ -25,7 +25,7 @@ class DeepSeekService:
             
         try:
             payload = {
-                "model": "deepseek-chat-v1",  # 更新为正确的模型名称
+                "model": "deepseek-chat",  # 使用正确的模型名称
                 "messages": [
                     {
                         "role": "user",
@@ -33,22 +33,35 @@ class DeepSeekService:
                     }
                 ],
                 "temperature": 0.7,
-                "max_tokens": 2000
+                "max_tokens": 2000,
+                "stream": False  # 添加stream参数
             }
+            
+            print(f"Sending request to DeepSeek API with URL: {DEEPSEEK_API_URL}")  # 调试日志
+            print(f"Request payload: {payload}")  # 调试日志
             
             response = requests.post(
                 DEEPSEEK_API_URL,
                 headers=self.headers,
                 json=payload,
-                timeout=30  # 添加超时设置
+                timeout=30
             )
+            
+            print(f"Response status code: {response.status_code}")  # 调试日志
             
             if response.status_code == 401:
                 print("API密钥无效或已过期")
                 return "API密钥验证失败，请联系管理员检查API密钥。"
+            
+            try:
+                print(f"Response content: {response.text}")  # 调试日志
+            except:
+                print("Unable to print response content")
                 
             response.raise_for_status()
             data = response.json()
+            
+            print(f"Parsed response data: {data}")  # 调试日志
             
             # 根据DeepSeek API的实际响应格式获取回复
             if "choices" in data and len(data["choices"]) > 0:
