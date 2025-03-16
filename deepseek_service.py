@@ -6,7 +6,7 @@ load_dotenv()
 
 # 使用Hugging Face的API
 HF_API_KEY = os.getenv('HF_DEEPSEEK_API_KEY')  # 复用已有的环境变量
-HF_API_URL = "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta"
+HF_API_URL = "https://api-inference.huggingface.co/models/meta-llama/Llama-2-7b-chat-hf"  # 换用Llama 2模型
 
 class ChatService:
     def __init__(self):
@@ -24,14 +24,13 @@ class ChatService:
             return "API密钥未配置，请联系管理员设置API密钥。"
             
         try:
-            # 构造符合Zephyr模型的输入格式
+            # 使用更简单的输入格式
             payload = {
-                "inputs": f"<human>: {message}\n<assistant>:",
+                "inputs": message,
                 "parameters": {
-                    "max_new_tokens": 1000,
+                    "max_length": 500,
                     "temperature": 0.7,
                     "top_p": 0.95,
-                    "do_sample": True,
                     "return_full_text": False
                 }
             }
@@ -64,7 +63,11 @@ class ChatService:
             
             # 解析Hugging Face的响应格式
             if isinstance(data, list) and len(data) > 0:
+                # 如果响应是列表格式
                 return data[0].get('generated_text', '抱歉，未能获取到有效回复。')
+            elif isinstance(data, dict):
+                # 如果响应是字典格式
+                return data.get('generated_text', data.get('answer', '抱歉，未能获取到有效回复。'))
             else:
                 return "抱歉，未能获取到有效回复。"
             
