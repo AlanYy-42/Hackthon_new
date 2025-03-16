@@ -1,11 +1,21 @@
 import os
 import google.generativeai as genai
 from dotenv import load_dotenv
+import time
 
+# 首先加载.env文件中的环境变量
 load_dotenv()
 
 # 使用Google AI API
 GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
+
+# 添加延迟，确保环境变量有时间加载
+time.sleep(1)
+
+# 再次尝试获取API密钥（以防第一次尝试失败）
+if not GOOGLE_API_KEY:
+    GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
+
 print("GOOGLE_API_KEY loaded:", bool(GOOGLE_API_KEY))  # 只打印是否存在，不打印实际值
 
 # 配置Gemini
@@ -33,8 +43,11 @@ class ChatService:
             try:
                 print("Initializing chat service with API key...")
                 # 列出可用模型
-                models = genai.list_models()
-                print("Available models:", [m.name for m in models])
+                try:
+                    models = genai.list_models()
+                    print("Available models:", [m.name for m in models])
+                except Exception as e:
+                    print(f"Error listing models: {str(e)}")
                 
                 # 使用gemini-pro模型
                 print("Creating GenerativeModel instance...")

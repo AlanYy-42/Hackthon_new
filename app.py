@@ -45,6 +45,16 @@ def crawl_program():
     
     url = data['url']
     
+    # 检查API密钥是否可用
+    if not os.getenv('GOOGLE_API_KEY') and not os.environ.get('GOOGLE_API_KEY'):
+        return jsonify({
+            "error": "API key not configured",
+            "title": "Sample Program",
+            "description": "This is a sample program description since we couldn't access the actual URL due to API key configuration issues.",
+            "courses": ["Sample Course 1", "Sample Course 2", "Sample Course 3"],
+            "credits": "120 credits required"
+        })
+    
     try:
         # Fetch the webpage content
         response = requests.get(url, timeout=10)
@@ -92,29 +102,52 @@ def crawl_program():
             # Extract all text from the page
             all_text = soup.get_text()
             
-            # Use Gemini to summarize the program information
-            prompt = f"""
-            Please extract and summarize the key information about this academic program from the following webpage text.
-            Focus on:
-            1. Program name/title
-            2. Required courses
-            3. Credit requirements
-            4. Program structure
-            
-            Webpage text:
-            {all_text[:5000]}  # Limit text length to avoid token limits
-            """
-            
-            response = chat_service.send_message(prompt)
-            if response:
-                program_info["ai_summary"] = response
+            try:
+                # Use Gemini to summarize the program information
+                prompt = f"""
+                Please extract and summarize the key information about this academic program from the following webpage text.
+                Focus on:
+                1. Program name/title
+                2. Required courses
+                3. Credit requirements
+                4. Program structure
+                
+                Webpage text:
+                {all_text[:5000]}  # Limit text length to avoid token limits
+                """
+                
+                response = chat_service.send_message(prompt)
+                if response and "API密钥未配置" not in response:
+                    program_info["ai_summary"] = response
+                else:
+                    # 如果API调用失败，提供一些基本信息
+                    program_info["ai_summary"] = "无法使用AI分析网页内容。请检查您提供的URL是否正确，或者直接输入课程信息。"
+            except Exception as e:
+                print(f"Error using AI to summarize: {str(e)}")
+                program_info["ai_summary"] = "无法使用AI分析网页内容。请检查您提供的URL是否正确，或者直接输入课程信息。"
+        
+        # 如果没有找到任何信息，提供一些基本信息
+        if not program_info["title"] and not program_info["description"] and not program_info["courses"] and not program_info.get("ai_summary"):
+            program_info["title"] = "未能提取课程信息"
+            program_info["description"] = "我们无法从提供的URL中提取课程信息。请确保URL是有效的课程页面。"
+            program_info["courses"] = ["未找到课程信息"]
         
         return jsonify(program_info)
         
     except requests.exceptions.RequestException as e:
-        return jsonify({"error": f"Failed to fetch URL: {str(e)}"}), 500
+        return jsonify({
+            "error": f"Failed to fetch URL: {str(e)}",
+            "title": "Error fetching URL",
+            "description": "We couldn't access the URL you provided. Please check if it's correct and accessible.",
+            "courses": ["Please provide course information manually"]
+        }), 200  # 返回200而不是500，这样前端仍然可以继续
     except Exception as e:
-        return jsonify({"error": f"Error processing webpage: {str(e)}"}), 500
+        return jsonify({
+            "error": f"Error processing webpage: {str(e)}",
+            "title": "Error processing webpage",
+            "description": "We encountered an error while processing the webpage content.",
+            "courses": ["Please provide course information manually"]
+        }), 200  # 返回200而不是500，这样前端仍然可以继续
 
 @app.route('/api/recommendations', methods=['POST'])
 def get_recommendations():
