@@ -49,8 +49,8 @@ def init_database():
         
         # 添加学生
         students = [
-            Student(name="Alice Smith", email="alice@example.com", major="Computer Science"),
-            Student(name="Bob Johnson", email="bob@example.com", major="Mathematics"),
+            Student(username="Alice Smith", email="alice@example.com", major="Computer Science"),
+            Student(username="Bob Johnson", email="bob@example.com", major="Mathematics"),
             # 添加更多学生...
         ]
         
