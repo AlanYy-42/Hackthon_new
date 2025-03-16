@@ -3,158 +3,248 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StudyPath AI</title>
+    <title>StudyPath AI - Smart Academic Planning Assistant</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        }
+    </style>
 </head>
-<body class="bg-gray-100">
-    <div class="container mx-auto px-4 py-8">
-        <header class="mb-8">
-            <h1 class="text-3xl font-bold text-blue-600">StudyPath AI</h1>
-            <p class="text-gray-600">Your Personal Academic Navigator</p>
-        </header>
-        
-        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
-            <h2 class="text-xl font-semibold mb-4">Course Recommendations</h2>
-            <div class="mb-4">
-                <label for="student-id" class="block text-gray-700 mb-2">Student ID:</label>
-                <input type="number" id="student-id" class="w-full p-2 border rounded" placeholder="Enter your student ID">
-            </div>
-            <button id="get-recommendations" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                Get Recommendations
-            </button>
-            
-            <div id="recommendations-container" class="mt-4 hidden">
-                <h3 class="font-medium mb-2">Recommended Courses:</h3>
-                <ul id="recommendations-list" class="list-disc pl-5"></ul>
-            </div>
-        </div>
-        
-        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
-            <h2 class="text-xl font-semibold mb-4">DeepSeek AI 助手</h2>
-            <div class="mb-4">
-                <div id="chat-messages" class="h-64 overflow-y-auto border rounded p-4 mb-4 bg-gray-50">
-                    <!-- 消息将在这里动态添加 -->
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <nav class="gradient-bg text-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <span class="text-xl font-bold">StudyPath.AI</span>
                 </div>
-                <div class="flex gap-2">
-                    <input type="text" id="user-input" class="flex-1 p-2 border rounded" placeholder="输入你的问题...">
-                    <button id="send-message" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                        发送
-                    </button>
+                <div class="hidden sm:flex items-center space-x-8">
+                    <a href="#features" class="text-white hover:text-blue-100">Features</a>
+                    <a href="#course-planning" class="text-white hover:text-blue-100">Course Planning</a>
+                    <a href="#career-goals" class="text-white hover:text-blue-100">Career Goals</a>
+                    <a href="#feedback" class="text-white hover:text-blue-100">Feedback</a>
                 </div>
             </div>
         </div>
-        
-        <div class="bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-xl font-semibold mb-4">Your Current Schedule</h2>
-            <div class="mb-4">
-                <label for="schedule-student-id" class="block text-gray-700 mb-2">Student ID:</label>
-                <input type="number" id="schedule-student-id" class="w-full p-2 border rounded" placeholder="Enter your student ID">
-            </div>
-            <button id="get-schedule" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                View Schedule
-            </button>
-            
-            <div id="schedule-container" class="mt-4 hidden">
-                <h3 class="font-medium mb-2">Current Courses:</h3>
-                <ul id="schedule-list" class="list-disc pl-5"></ul>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="gradient-bg text-white py-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl sm:text-6xl font-bold mb-6">
+                Redefine Your Learning Path with AI
+            </h1>
+            <p class="text-xl mb-8 text-blue-100">
+                StudyPath.AI leverages cutting-edge Edge AI technology to provide intelligent academic planning tools for university students and hackathon organizers
+            </p>
+            <div class="flex justify-center gap-4">
+                <button onclick="document.getElementById('course-planning').scrollIntoView({behavior: 'smooth'})" 
+                        class="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50">
+                    Start Planning
+                </button>
+                <button onclick="document.getElementById('career-goals').scrollIntoView({behavior: 'smooth'})"
+                        class="bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-400">
+                    Explore Career Goals
+                </button>
             </div>
         </div>
     </div>
-    
+
+    <!-- Features Section -->
+    <div id="features" class="py-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold text-center mb-12 text-gray-900">Core Features</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h3 class="text-xl font-semibold text-blue-900 mb-4">Smart Course Planning</h3>
+                    <p class="text-gray-600">AI-powered personalized course recommendations to help you create the optimal learning path.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h3 class="text-xl font-semibold text-blue-900 mb-4">Career Integration</h3>
+                    <p class="text-gray-600">Seamlessly align your academic planning with career development goals.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h3 class="text-xl font-semibold text-blue-900 mb-4">Data Visualization</h3>
+                    <p class="text-gray-600">Intuitive charts and graphs to track your progress and achievements.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Course Planning -->
+    <div id="course-planning" class="py-20 bg-gray-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold text-center mb-12 text-gray-900">Course Planning</h2>
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <div class="mb-6">
+                    <canvas id="courseChart"></canvas>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 class="text-lg font-semibold text-blue-900 mb-4">Recommended Courses</h3>
+                        <div class="space-y-4">
+                            <div class="p-4 bg-blue-50 rounded-lg">
+                                <h4 class="font-medium text-blue-900">Data Structures & Algorithms</h4>
+                                <p class="text-sm text-blue-700">Course Code: CS201 | Credits: 4</p>
+                            </div>
+                            <div class="p-4 bg-blue-50 rounded-lg">
+                                <h4 class="font-medium text-blue-900">Introduction to Machine Learning</h4>
+                                <p class="text-sm text-blue-700">Course Code: AI301 | Credits: 3</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-blue-900 mb-4">Learning Progress</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between text-sm text-blue-900 mb-1">
+                                    <span>Current Semester</span>
+                                    <span>75%</span>
+                                </div>
+                                <div class="w-full bg-blue-100 rounded-full h-2">
+                                    <div class="bg-blue-600 h-2 rounded-full" style="width: 75%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-sm text-blue-900 mb-1">
+                                    <span>Overall Progress</span>
+                                    <span>60%</span>
+                                </div>
+                                <div class="w-full bg-blue-100 rounded-full h-2">
+                                    <div class="bg-blue-600 h-2 rounded-full" style="width: 60%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Career Goals -->
+    <div id="career-goals" class="py-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold text-center mb-12 text-gray-900">Career Goals</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h3 class="text-xl font-semibold text-blue-900 mb-6">Development Path</h3>
+                    <div class="space-y-6">
+                        <div>
+                            <div class="flex justify-between text-sm text-blue-900 mb-1">
+                                <span>Undergraduate Studies</span>
+                                <span>75%</span>
+                            </div>
+                            <div class="w-full bg-blue-100 rounded-full h-2">
+                                <div class="bg-blue-600 h-2 rounded-full" style="width: 75%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-sm text-blue-900 mb-1">
+                                <span>Graduate School Application</span>
+                                <span>30%</span>
+                            </div>
+                            <div class="w-full bg-blue-100 rounded-full h-2">
+                                <div class="bg-blue-600 h-2 rounded-full" style="width: 30%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-sm text-blue-900 mb-1">
+                                <span>Career Development</span>
+                                <span>10%</span>
+                            </div>
+                            <div class="w-full bg-blue-100 rounded-full h-2">
+                                <div class="bg-blue-600 h-2 rounded-full" style="width: 10%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h3 class="text-xl font-semibold text-blue-900 mb-6">Recommended Resources</h3>
+                    <div class="space-y-4">
+                        <div class="p-4 bg-blue-50 rounded-lg">
+                            <h4 class="font-medium text-blue-900">LinkedIn Learning</h4>
+                            <p class="text-sm text-blue-700">Professional skills online courses</p>
+                        </div>
+                        <div class="p-4 bg-blue-50 rounded-lg">
+                            <h4 class="font-medium text-blue-900">Industry Workshops</h4>
+                            <p class="text-sm text-blue-700">Network with industry professionals</p>
+                        </div>
+                        <div class="p-4 bg-blue-50 rounded-lg">
+                            <h4 class="font-medium text-blue-900">Mentorship Program</h4>
+                            <p class="text-sm text-blue-700">One-on-one career guidance</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feedback -->
+    <div id="feedback" class="py-20 bg-gray-100">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold text-center mb-12 text-gray-900">Feedback</h2>
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <form class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Name</label>
+                        <input type="text" class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter your name">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Email</label>
+                        <input type="email" class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter your email address">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Message</label>
+                        <textarea class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" rows="4" placeholder="Please describe your feedback or suggestions..."></textarea>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-500">
+                        Submit Feedback
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Get recommendations
-        document.getElementById('get-recommendations').addEventListener('click', async () => {
-            const studentId = document.getElementById('student-id').value;
-            if (!studentId) {
-                alert('Please enter a student ID');
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/recommendations', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ student_id: studentId })
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to get recommendations');
+        // Initialize course chart
+        const ctx = document.getElementById('courseChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Spring 2024', 'Fall 2024', 'Spring 2025'],
+                datasets: [{
+                    label: 'Credits',
+                    data: [15, 18, 12],
+                    backgroundColor: '#2563eb',
+                    borderColor: '#2563eb',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Credits'
+                        }
+                    }
                 }
-                
-                const recommendations = await response.json();
-                const container = document.getElementById('recommendations-container');
-                const list = document.getElementById('recommendations-list');
-                
-                // Clear previous recommendations
-                list.innerHTML = '';
-                
-                // Add new recommendations
-                recommendations.forEach(course => {
-                    const li = document.createElement('li');
-                    li.textContent = `${course.code}: ${course.name} (${course.credits} credits)`;
-                    list.appendChild(li);
-                });
-                
-                // Show the container
-                container.classList.remove('hidden');
-            } catch (error) {
-                console.error(error);
-                alert('Error: ' + error.message);
             }
         });
-        
-        // Get schedule
-        document.getElementById('get-schedule').addEventListener('click', async () => {
-            const studentId = document.getElementById('schedule-student-id').value;
-            if (!studentId) {
-                alert('Please enter a student ID');
-                return;
-            }
-            
-            try {
-                const response = await fetch(`/api/students/${studentId}/courses`);
-                
-                if (!response.ok) {
-                    throw new Error('Failed to get schedule');
-                }
-                
-                const enrollments = await response.json();
-                const container = document.getElementById('schedule-container');
-                const list = document.getElementById('schedule-list');
-                
-                // Clear previous schedule
-                list.innerHTML = '';
-                
-                // Add new schedule
-                enrollments.forEach(enrollment => {
-                    const li = document.createElement('li');
-                    li.textContent = `${enrollment.course_code} (${enrollment.semester}) - Status: ${enrollment.status}`;
-                    list.appendChild(li);
-                });
-                
-                // Show the container
-                container.classList.remove('hidden');
-            } catch (error) {
-                console.error(error);
-                alert('Error: ' + error.message);
-            }
-        });
-        
-        // DeepSeek聊天功能
-        document.getElementById('send-message').addEventListener('click', async () => {
+
+        // AI Assistant functionality
+        document.getElementById('send-message')?.addEventListener('click', async () => {
             const userInput = document.getElementById('user-input');
             const message = userInput.value.trim();
             
             if (!message) {
-                alert('请输入问题');
+                alert('Please enter a question');
                 return;
             }
-            
-            // 添加用户消息到聊天界面
-            addMessageToChat('user', message);
-            userInput.value = '';
             
             try {
                 const response = await fetch('/api/chat', {
@@ -171,15 +261,17 @@
                 
                 const data = await response.json();
                 addMessageToChat('assistant', data.response);
+                userInput.value = '';
             } catch (error) {
                 console.error(error);
-                addMessageToChat('assistant', '抱歉，我现在无法回答。请稍后再试。');
+                alert('An error occurred. Please try again later.');
             }
         });
-        
-        // 添加消息到聊天界面
+
         function addMessageToChat(role, content) {
             const chatMessages = document.getElementById('chat-messages');
+            if (!chatMessages) return;
+
             const messageDiv = document.createElement('div');
             messageDiv.className = `mb-4 ${role === 'user' ? 'text-right' : 'text-left'}`;
             
@@ -195,13 +287,6 @@
             chatMessages.appendChild(messageDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
-        
-        // 按Enter发送消息
-        document.getElementById('user-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                document.getElementById('send-message').click();
-            }
-        });
     </script>
 </body>
 </html> 

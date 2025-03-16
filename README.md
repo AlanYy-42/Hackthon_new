@@ -11,8 +11,85 @@ pinned: false
 
 # StudyPath AI
 
-Your Personal Academic Navigator - Revolutionizing Academic Planning with Edge AI Intelligence
+An intelligent academic planning assistant powered by Edge AI technology, providing personalized learning planning services for university students and hackathon organizers.
 
-## Project Overview
+## Features
 
-StudyPath AI transforms academic planning by leveraging Snapdragon's NPU to create a powerful, privacy-first platform for personalized academic guidance. Our solution addresses critical challenges in course selection, academic performance optimization, and career alignment that today's university students face. 
+- Smart Course Planning
+  - AI-powered personalized course recommendations
+  - Automatic course load balancing
+  - Prerequisites analysis
+
+- Career Goal Integration
+  - Learning path visualization
+  - Career development planning
+  - Resource recommendations
+
+- Data Visualization
+  - Learning progress tracking
+  - Course distribution analysis
+  - Grade prediction
+
+## Tech Stack
+
+- Backend: Flask
+- Database: SQLite
+- AI Model: Google Generative AI
+- Frontend: TailwindCSS + Chart.js
+
+## Deployment Guide
+
+1. Environment Requirements:
+   - Python 3.9+
+   - SQLite3
+
+2. Install Dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Environment Variables:
+   Create a `.env` file and set the following variables:
+   ```
+   DATABASE_URI=sqlite:///instance/studypath.db
+   FLASK_APP=app.py
+   FLASK_ENV=production
+   GOOGLE_API_KEY=your_api_key
+   ```
+
+4. Initialize Database:
+   ```bash
+   python seed_db.py
+   ```
+
+5. Start Application:
+   ```bash
+   python app.py
+   ```
+
+## API Documentation
+
+### Course Related
+
+- GET `/api/courses` - Get all courses
+- POST `/api/recommendations` - Get course recommendations
+
+### Student Related
+
+- GET `/api/student/<student_id>/progress` - Get learning progress
+
+### Other Endpoints
+
+- POST `/api/chat` - AI Assistant chat
+- POST `/api/feedback` - Submit feedback
+
+## Contributing
+
+1. Fork this repository
+2. Create a feature branch
+3. Submit changes
+4. Create a Pull Request
+
+## License
+
+MIT License 
