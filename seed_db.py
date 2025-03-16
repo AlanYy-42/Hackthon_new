@@ -5,13 +5,11 @@ import random
 def seed_database():
     """Seed the database with sample data"""
     with app.app_context():
-        # Create tables
+        # 先删除所有表，然后重新创建
+        db.drop_all()
         db.create_all()
         
-        # Check if data already exists
-        if Course.query.count() > 0:
-            print("Database already seeded.")
-            return
+        print("Creating fresh database tables...")
         
         # Create courses
         courses = [
@@ -46,11 +44,20 @@ def seed_database():
         for course in courses:
             db.session.add(course)
         
-        # Set up prerequisites
-        courses[1].prerequisites.append(courses[0])  # CS201 requires CS101
-        courses[2].prerequisites.append(courses[0])  # CS301 requires CS101
-        courses[3].prerequisites.append(courses[1])  # CS401 requires CS201
-        courses[5].prerequisites.append(courses[4])  # MATH201 requires MATH101
+        # 提交课程以获取ID
+        db.session.commit()
+        
+        # Set up prerequisites (确保不会添加自引用的先修课程关系)
+        def add_prerequisite(course, prerequisite):
+            if course.id != prerequisite.id:  # 确保课程不能是自己的前置课程
+                course.prerequisites.append(prerequisite)
+            else:
+                print(f"Warning: Attempted to add {course.code} as its own prerequisite. Skipped.")
+        
+        add_prerequisite(courses[1], courses[0])  # CS201 requires CS101
+        add_prerequisite(courses[2], courses[0])  # CS301 requires CS101
+        add_prerequisite(courses[3], courses[1])  # CS401 requires CS201
+        add_prerequisite(courses[5], courses[4])  # MATH201 requires MATH101
         
         # Create students
         students = [
@@ -62,6 +69,9 @@ def seed_database():
         # Add students to database
         for student in students:
             db.session.add(student)
+        
+        # 提交学生以获取ID
+        db.session.commit()
         
         # Create enrollments
         enrollments = [

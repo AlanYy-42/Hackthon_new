@@ -3,6 +3,7 @@ import requests
 import json
 from dotenv import load_dotenv
 import time
+import re
 
 # First load environment variables from .env file
 load_dotenv()
@@ -11,7 +12,8 @@ load_dotenv()
 time.sleep(1)
 
 # Safely get API key from environment variables
-API_KEY = os.getenv('API')
+# 尝试多种可能的环境变量名称
+API_KEY = os.getenv('API') or os.getenv('DEEPSEEK_API_KEY') or os.getenv('DEEPSEEK_API')
 
 print("API key loaded:", bool(API_KEY))  # Only print if exists, not the actual value
 
@@ -101,7 +103,8 @@ class ChatService:
     def send_message(self, message):
         """Send message to DeepSeek API and get reply"""
         if not self.api_key_loaded or not self.api_key_valid:
-            return self._get_mock_response(message)
+            # 不再使用硬编码的mock response，而是返回明确的错误信息
+            return self._generate_fallback_response(message)
         
         try:
             # Add user message to history
@@ -120,7 +123,7 @@ class ChatService:
                 "model": DEEPSEEK_MODEL,
                 "messages": messages,
                 "max_tokens": 2000,
-                "temperature": 0.7
+                "temperature": 0.9  # 提高temperature以增加多样性
             }
             
             response = requests.post(DEEPSEEK_API_URL, headers=headers, json=data)
@@ -135,148 +138,130 @@ class ChatService:
                 return assistant_message
             else:
                 print(f"API request failed with status code {response.status_code}: {response.text}")
-                return self._get_mock_response(message)
+                return self._generate_fallback_response(message)
                 
         except Exception as e:
             print(f"Error sending message: {str(e)}")
-            return self._get_mock_response(message)
+            return self._generate_fallback_response(message)
     
-    def _get_mock_response(self, message):
-        """Provide a mock response based on the message content"""
+    def _generate_fallback_response(self, message):
+        """生成备用响应，当API不可用时使用"""
+        # 提取关键信息
         message_lower = message.lower()
         
-        # Extract key information from the message
+        # 提取URL（如果存在）
+        program_url = ""
+        if "http" in message_lower:
+            url_match = re.search(r'https?://[^\s]+', message_lower)
+            if url_match:
+                program_url = url_match.group(0)
+        
+        # 提取当前课程（如果存在）
+        current_courses = []
+        course_pattern = r'\b[A-Z]{2,4}\s*\d{3,4}[A-Z]?\b'
+        if re.search(course_pattern, message_lower, re.IGNORECASE):
+            current_courses = re.findall(course_pattern, message_lower, re.IGNORECASE)
+        
+        # 提取学期信息
         current_semester = ""
-        program = ""
-        career_goal = ""
-        interests = ""
-        
-        # Try to extract semester information
         if "semester" in message_lower:
-            semester_index = message_lower.find("semester")
-            semester_end = message_lower.find("\n", semester_index)
-            if semester_end == -1:
-                semester_end = len(message_lower)
-            current_semester = message_lower[semester_index-20:semester_end].strip()
-            if ":" in current_semester:
-                current_semester = current_semester.split(":")[-1].strip()
+            semester_pattern = r'(?:current\s+semester|semester)[:\s]+([a-zA-Z]+\s+\d{4})'
+            semester_match = re.search(semester_pattern, message_lower, re.IGNORECASE)
+            if semester_match:
+                current_semester = semester_match.group(1)
+            else:
+                # 尝试更宽松的匹配
+                semester_pattern = r'(?:spring|fall|summer|winter)\s+\d{4}'
+                semester_match = re.search(semester_pattern, message_lower, re.IGNORECASE)
+                if semester_match:
+                    current_semester = semester_match.group(0)
         
-        # Try to extract program information
-        if "program" in message_lower:
-            program_index = message_lower.find("program")
-            program_end = message_lower.find("\n", program_index)
-            if program_end == -1:
-                program_end = len(message_lower)
-            program = message_lower[program_index-20:program_end].strip()
-            if ":" in program:
-                program = program.split(":")[-1].strip()
-        
-        # Try to extract career goal
-        if "career" in message_lower:
-            career_index = message_lower.find("career")
-            career_end = message_lower.find("\n", career_index)
-            if career_end == -1:
-                career_end = len(message_lower)
-            career_goal = message_lower[career_index-20:career_end].strip()
-            if ":" in career_goal:
-                career_goal = career_goal.split(":")[-1].strip()
-        elif "job" in message_lower:
-            job_index = message_lower.find("job")
-            job_end = message_lower.find("\n", job_index)
-            if job_end == -1:
-                job_end = len(message_lower)
-            career_goal = message_lower[job_index-20:job_end].strip()
-            if ":" in career_goal:
-                career_goal = career_goal.split(":")[-1].strip()
-        
-        # Try to extract interests
-        if "interest" in message_lower:
-            interest_index = message_lower.find("interest")
-            interest_end = message_lower.find("\n", interest_index)
-            if interest_end == -1:
-                interest_end = len(message_lower)
-            interests = message_lower[interest_index-20:interest_end].strip()
-            if ":" in interests:
-                interests = interests.split(":")[-1].strip()
-        
-        # If we couldn't extract specific information, look for common keywords
-        if not any([current_semester, program, career_goal, interests]):
-            keywords = ["computer science", "software", "web", "data", "ai", "machine learning", 
-                       "engineering", "business", "math", "science", "art", "design", "medicine"]
-            found_keywords = []
-            for keyword in keywords:
-                if keyword in message_lower:
-                    found_keywords.append(keyword)
-            
-            if found_keywords:
-                if not interests:
-                    interests = ", ".join(found_keywords)
-                if not program and "computer" in found_keywords:
-                    program = "Computer Science"
-                elif not program and "business" in found_keywords:
-                    program = "Business Administration"
-                elif not program and "engineering" in found_keywords:
-                    program = "Engineering"
-        
-        # Default values if we couldn't extract anything
         if not current_semester:
-            current_semester = "Fall 2025"
+            current_semester = "Fall 2025"  # 默认值
+        
+        # 提取专业信息
+        program = ""
+        program_patterns = [
+            r'(?:program|major)[:\s]+([a-zA-Z\s]+)',
+            r'studying\s+([a-zA-Z\s]+)',
+            r'([a-zA-Z\s]+)\s+(?:degree|program|major)'
+        ]
+        
+        for pattern in program_patterns:
+            program_match = re.search(pattern, message_lower, re.IGNORECASE)
+            if program_match:
+                program = program_match.group(1).strip()
+                break
+        
         if not program:
-            program = "Computer Science"
-        if not career_goal:
-            career_goal = "Software Developer"
-        if not interests:
-            interests = "programming, web development, AI"
+            # 尝试从URL中提取
+            if "computer" in program_url.lower() or "cs" in program_url.lower():
+                program = "Computer Science"
+            elif "business" in program_url.lower():
+                program = "Business Administration"
+            elif "engineering" in program_url.lower():
+                program = "Engineering"
+            else:
+                program = "Computer Science"  # 默认值
         
-        # Generate appropriate response based on message content
+        # 提取职业目标
+        career = ""
+        career_patterns = [
+            r'(?:career|job)[:\s]+([a-zA-Z\s]+)',
+            r'become\s+(?:a|an)\s+([a-zA-Z\s]+)',
+            r'work\s+as\s+(?:a|an)\s+([a-zA-Z\s]+)'
+        ]
+        
+        for pattern in career_patterns:
+            career_match = re.search(pattern, message_lower, re.IGNORECASE)
+            if career_match:
+                career = career_match.group(1).strip()
+                break
+        
+        if not career:
+            if "ml" in message_lower or "machine learning" in message_lower:
+                career = "Machine Learning Engineer"
+            elif "web" in message_lower:
+                career = "Web Developer"
+            elif "data" in message_lower:
+                career = "Data Scientist"
+            elif "security" in message_lower or "cyber" in message_lower:
+                career = "Cybersecurity Specialist"
+            else:
+                career = "Software Developer"  # 默认值
+        
+        # 提取学分限制（如果存在）
+        credit_limit = None
+        credit_pattern = r'maximum\s+credit.*?(\d+)\s+credit'
+        if re.search(credit_pattern, message_lower, re.IGNORECASE):
+            credit_match = re.search(credit_pattern, message_lower, re.IGNORECASE)
+            if credit_match:
+                credit_limit = int(credit_match.group(1))
+        
+        # 根据消息内容确定需要生成的内容类型
         if "course plan" in message_lower or "academic" in message_lower or "courses" in message_lower:
-            return self._generate_course_plan(current_semester, program, career_goal, interests)
+            return self._generate_course_plan_fallback(current_semester, program, career, current_courses, credit_limit, program_url)
         elif "career" in message_lower or "job" in message_lower or "profession" in message_lower:
-            return self._generate_career_advice(program, career_goal, interests)
-        elif "feedback" in message_lower:
-            return "Thank you for your feedback! We appreciate your input and will use it to improve our services."
+            return self._generate_career_advice_fallback(program, career, message)
         else:
-            # Default response
-            return f"""Thank you for your message. I'm StudyPath AI, your academic planning assistant.
+            # 默认响应
+            return f"""# API Connection Issue
 
-Based on what I understand, you're interested in {program} with a focus on {interests}.
+I apologize, but I'm currently unable to connect to the DeepSeek API to provide a fully personalized response. Here's what I understand from your request:
 
-I can help you with:
-- Course planning and recommendations for {program}
-- Career path guidance toward becoming a {career_goal}
-- Academic resources for {interests}
-- Study strategies for success in {current_semester}
+- **Current Semester**: {current_semester}
+- **Program/Major**: {program}
+- **Career Goal**: {career}
+- **Current Courses**: {', '.join(current_courses) if current_courses else 'None specified'}
 
-Please provide more details about your academic background and goals so I can give you more personalized advice."""
+To get a personalized academic plan or career advice, please ensure the API key is configured correctly in the environment variables.
+
+In the meantime, I can still help with general questions about academic planning, course selection strategies, or career development. Please feel free to ask!"""
     
-    def _generate_course_plan(self, semester, program, career, interests):
-        """使用DeepSeek API生成完整的课程推荐计划"""
-        # 如果API可用，直接使用DeepSeek生成课程计划
-        if self.api_key_valid:
-            prompt = f"""
-Design a full university course plan for a {program} major.
-- Assume the student is starting from {semester}.
-- Balance each semester with 15-18 credits.
-- Include both core and elective courses.
-- Align electives with career goal: {career} and interests: {interests}.
-- Output in structured Markdown format with:
-  - Each semester section MUST start with '### **Semester Name**'
-  - Each course MUST be listed as '1. **Course Name** (COURSE101) - 3 credits'
-  - Include a short description for each course
-  - Include 'Total Credits: XX' for each semester
-  - Include an 'Additional Recommendations' section
-  - Include a 'Summary' section
-"""
-            return self.send_message(prompt)
-        
-        # 如果API不可用，使用简化的模拟响应
-        # 解析用户输入的学期，格式应为"Fall 2025"或"Spring 2026"等
-        current_semester = semester
-        if not current_semester or "semester" in current_semester.lower():
-            current_semester = "Fall 2025"
-        
-        # 提取学期和年份
-        parts = current_semester.split()
+    def _generate_course_plan_fallback(self, semester, program, career, current_courses, credit_limit, program_url):
+        """生成备用课程计划，当API不可用时使用"""
+        # 解析学期和年份
+        parts = semester.split()
         if len(parts) >= 2:
             term = parts[0].lower()  # fall或spring
             try:
@@ -286,6 +271,11 @@ Design a full university course plan for a {program} major.
         else:
             term = "fall"
             year = 2025
+        
+        # 确定学分限制
+        max_credits = 16  # 默认值
+        if credit_limit:
+            max_credits = credit_limit
         
         # 生成未来6个学期
         semesters = []
@@ -300,37 +290,62 @@ Design a full university course plan for a {program} major.
                     term = "Fall"
                 semesters.append(f"{term} {year}")
         
-        # 构建简化的响应
+        # 构建响应
         response = f"""# Personalized Course Plan for {program}
 
-Based on your interests in {interests} and career goal as a {career}, here's a comprehensive course plan from {semesters[0]} through graduation:
+## API Connection Issue
+
+I apologize, but I'm currently unable to connect to the DeepSeek API to provide a fully personalized course plan. However, I've created a simplified plan based on the information you provided:
+
+- **Program URL**: {program_url if program_url else 'Not provided'}
+- **Current Semester**: {semester}
+- **Career Goal**: {career}
+- **Current Courses**: {', '.join(current_courses) if current_courses else 'None specified'}
+- **Credit Limit**: {f'{credit_limit} credits per semester' if credit_limit else 'Standard load (15-18 credits)'}
+
+Here's a general course plan that might help guide your academic journey:
 
 """
         
-        # 为每个学期添加简化的课程信息 - 确保格式与parseAIResponse函数匹配
+        # 为每个学期添加课程信息
         for i, semester in enumerate(semesters):
-            total_credits = 16  # 默认学分总数
+            # 调整每学期的课程数量，确保不超过学分限制
+            courses_per_semester = max(1, int(max_credits / 4))  # 假设平均每门课4学分
+            total_credits = min(max_credits, courses_per_semester * 4)
+            
             response += f"""### **{semester}**
 Total Credits: {total_credits}
 
-1. **Core {program} Course {i*2+1}** (CORE{201+i*100}) - 4 credits
-   - Essential course covering fundamental concepts in {program}.
+"""
+            # 添加课程
+            for j in range(1, courses_per_semester + 1):
+                if i == 0 and j <= len(current_courses):
+                    # 使用用户当前正在修的课程
+                    course_code = current_courses[j-1].upper()
+                    response += f"""{j}. **Course {j}** ({course_code}) - 4 credits
+   - Current course you are taking.
 
-2. **Core {program} Course {i*2+2}** (CORE{202+i*100}) - 3 credits
-   - Advanced topics building on previous knowledge in {program}.
-
-3. **Elective related to {career}** (ELEC{203+i*100}) - 3 credits
-   - Specialized course aligned with your career goals.
-
-4. **General Education Course** (GEN{204+i*100}) - 3 credits
-   - Broadens your knowledge beyond your major.
-
-5. **Professional Development** (PROF{205+i*100}) - 3 credits
-   - Builds essential skills for your future career.
+"""
+                else:
+                    # 根据职业目标和学期生成课程
+                    if "machine learning" in career.lower() or "ml" in career.lower() or "ai" in career.lower() or "data" in career.lower():
+                        course_types = ["AI", "ML", "Data", "Algorithm", "Statistics"]
+                    elif "web" in career.lower() or "frontend" in career.lower() or "backend" in career.lower():
+                        course_types = ["Web", "UI/UX", "Database", "Network", "Security"]
+                    elif "security" in career.lower() or "cyber" in career.lower():
+                        course_types = ["Security", "Network", "Cryptography", "Systems", "Ethics"]
+                    else:
+                        course_types = ["Core", "Advanced", "Specialized", "Project", "Research"]
+                    
+                    course_type = course_types[(i + j) % len(course_types)]
+                    course_level = 100 * (i + 1) + j * 10
+                    
+                    response += f"""{j}. **{course_type} Course {j}** ({program[:2].upper()}{course_level}) - 4 credits
+   - {'Advanced' if i > 2 else 'Fundamental'} course related to {course_type.lower()} concepts in {program}.
 
 """
         
-        # 添加额外建议 - 确保格式与parseAIResponse函数匹配
+        # 添加额外建议
         response += f"""## Additional Recommendations
 
 ### Internships
@@ -344,33 +359,25 @@ Join student organizations related to {program} to build your network.
 
 ## Summary
 
-This plan provides a balanced approach to your {program} education, with courses that will prepare you for a career as a {career}. Adjust as needed based on your university's specific requirements.
+This is a simplified course plan based on limited information. For a more detailed and personalized plan, please ensure the API key is configured correctly.
 
-Note: This is a simplified plan generated without API access. For a more detailed and personalized plan, please ensure the API key is configured correctly.
+To get a fully personalized course plan that takes into account specific program requirements, prerequisites, and your individual goals, please try again when the API connection is restored.
 """
         
         return response
     
-    def _generate_career_advice(self, program, career, interests):
-        """使用DeepSeek API生成个性化职业发展建议"""
-        # 如果API可用，直接使用DeepSeek生成职业建议
-        if self.api_key_valid:
-            prompt = f"""
-Based on a {program} background, generate a detailed career development plan for becoming a {career}.
-- Include key technical and soft skills needed.
-- Recommend specific online courses, books, and resources.
-- Outline short-term, mid-term, and long-term career goals.
-- Provide practical advice on gaining industry experience.
-- Include information about interests in: {interests}
-- Use a professional but friendly tone.
-- Format the response in Markdown with clear sections.
-"""
-            return self.send_message(prompt)
-        
-        # 如果API不可用，使用简化的模拟响应
+    def _generate_career_advice_fallback(self, program, career, interests):
+        """生成备用职业建议，当API不可用时使用"""
         response = f"""# Career Development Plan for {career}
 
-Based on your background in {program} and interests in {interests}, here's a personalized career development plan:
+## API Connection Issue
+
+I apologize, but I'm currently unable to connect to the DeepSeek API to provide fully personalized career advice. However, I've created a simplified career development plan based on the information you provided:
+
+- **Program/Major**: {program}
+- **Career Goal**: {career}
+
+Here's a general career development plan that might help guide your professional journey:
 
 ## Key Skills to Develop
 
@@ -389,23 +396,21 @@ Based on your background in {program} and interests in {interests}, here's a per
 1. **Online Courses**
    - Courses related to {program} fundamentals
    - Specialized courses for {career} roles
-   - Skill-building courses in {interests}
 
 2. **Books**
    - Industry-standard texts for {program}
    - Career development guides for {career} professionals
-   - Technical references related to your field
 
 ## Career Path Milestones
 
 1. **Short-term (0-1 years)**
    - Complete fundamental courses in {program}
-   - Build a portfolio showcasing {interests}
+   - Build a portfolio showcasing relevant projects
    - Obtain an entry-level position related to {career}
 
 2. **Medium-term (1-3 years)**
    - Gain experience in your chosen field
-   - Develop specialized expertise in {interests}
+   - Develop specialized expertise
    - Expand your professional network
 
 3. **Long-term (3-5 years)**
@@ -413,24 +418,78 @@ Based on your background in {program} and interests in {interests}, here's a per
    - Consider advanced degrees or certifications
    - Develop leadership skills
 
-Note: This is a simplified plan generated without API access. For a more detailed and personalized plan, please ensure the API key is configured correctly.
+For a more detailed and personalized career development plan, please ensure the API key is configured correctly and try again when the API connection is restored.
 """
         
         return response
-
-def get_courses_for_program(program_name):
-    """从数据库或外部API获取指定专业的课程"""
-    # 首先检查数据库中是否有该专业的课程
-    courses = database.query_courses(program_name)
     
-    if courses:
-        return courses
-    else:
-        # 如果数据库中没有，使用AI生成合理的课程建议
-        ai_generated_courses = generate_courses_with_ai(program_name)
-        # 可选：将生成的课程保存到数据库中以供将来使用
-        database.save_courses(program_name, ai_generated_courses)
-        return ai_generated_courses
+    def _generate_course_plan(self, semester, program, career, interests):
+        """使用DeepSeek API生成完整的课程推荐计划"""
+        # 提取URL（如果存在）
+        program_url = ""
+        if "http" in interests:
+            url_match = re.search(r'https?://[^\s]+', interests)
+            if url_match:
+                program_url = url_match.group(0)
+        
+        # 提取当前课程（如果存在）
+        current_courses = []
+        course_pattern = r'\b[A-Z]{2,4}\s*\d{3,4}[A-Z]?\b'
+        if re.search(course_pattern, interests, re.IGNORECASE):
+            current_courses = re.findall(course_pattern, interests, re.IGNORECASE)
+        
+        # 提取学分限制（如果存在）
+        credit_limit = None
+        credit_pattern = r'maximum\s+credit.*?(\d+)\s+credit'
+        if re.search(credit_pattern, interests, re.IGNORECASE):
+            credit_match = re.search(credit_pattern, interests, re.IGNORECASE)
+            if credit_match:
+                credit_limit = int(credit_match.group(1))
+        
+        # 使用DeepSeek API生成课程计划
+        prompt = f"""
+You are an academic planning assistant. Based on the following information, create a personalized course plan:
+
+PROGRAM URL: {program_url}
+CURRENT SEMESTER: {semester}
+CURRENT COURSES: {', '.join(current_courses) if current_courses else 'None specified'}
+CAREER GOAL: {career}
+ADDITIONAL REQUIREMENTS: {interests}
+{f'CREDIT LIMIT PER SEMESTER: {credit_limit} credits' if credit_limit else ''}
+
+Instructions:
+1. Analyze the program URL to understand degree requirements, course offerings, and prerequisites.
+2. Create a semester-by-semester plan starting from {semester} through graduation.
+3. For each semester, recommend specific courses with their codes, names, and credit hours.
+4. Ensure prerequisites are met and courses are balanced each semester.
+5. Align elective choices with the career goal of becoming a {career}.
+6. If a credit limit per semester is specified, ensure each semester doesn't exceed that limit.
+7. Include recommendations for internships, certifications, and extracurricular activities.
+
+Format your response in Markdown with:
+- Each semester section MUST start with '### **Semester Name**'
+- Each course MUST be listed as '1. **Course Name** (COURSE101) - X credits'
+- Include a short description for each course
+- Include 'Total Credits: XX' for each semester
+- Include an 'Additional Recommendations' section
+- Include a 'Summary' section
+"""
+        return self.send_message(prompt)
+    
+    def _generate_career_advice(self, program, career, interests):
+        """使用DeepSeek API生成个性化职业发展建议"""
+        # 使用DeepSeek API生成职业建议
+        prompt = f"""
+Based on a {program} background, generate a detailed career development plan for becoming a {career}.
+- Include key technical and soft skills needed.
+- Recommend specific online courses, books, and resources.
+- Outline short-term, mid-term, and long-term career goals.
+- Provide practical advice on gaining industry experience.
+- Include information about interests in: {interests}
+- Use a professional but friendly tone.
+- Format the response in Markdown with clear sections.
+"""
+        return self.send_message(prompt)
 
 # Create a singleton instance
 print("Creating ChatService instance...")

@@ -8,6 +8,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import json
+from flask_cors import CORS
 
 # Load environment variables at the start
 load_dotenv()
@@ -20,6 +21,9 @@ print("API exists:", "API" in os.environ)
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///studypath.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# 添加CORS支持
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # Initialize database
 db.init_app(app)
