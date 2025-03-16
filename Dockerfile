@@ -11,17 +11,18 @@ COPY . .
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# 5️⃣ 打印已安装的关键依赖（避免 grep 失败）
-RUN python -c "import flask, numpy, pandas, sklearn, sqlalchemy, flask_sqlalchemy, flask_cors, requests, bs4, matplotlib; print('✅ All required packages installed successfully')"
+# 5️⃣ 创建必要目录并赋予权限
+RUN mkdir -p /app/models && chmod -R 777 /app/models && \
+    mkdir -p /app/instance && chmod -R 777 /app/instance && \
+    mkdir -p /tmp/mpl_config && chmod -R 777 /tmp/mpl_config
 
-# 6️⃣ 创建数据库目录
-RUN mkdir -p instance
+# 6️⃣ 设置 Matplotlib 缓存路径，避免权限问题
+ENV MPLCONFIGDIR=/tmp/mpl_config
 
 # 7️⃣ 设置环境变量
 ENV PYTHONPATH=/app
 ENV FLASK_APP=app.py
 ENV FLASK_ENV=production
-# API密钥将从 Hugging Face Spaces 的 Secret 中自动获取
 
 # 8️⃣ 打印环境变量状态（不显示值）
 RUN echo "Checking environment variables:" && \
