@@ -376,6 +376,14 @@
         </div>
     </div>
 
+    <!-- Generate Course Plan Button -->
+    <div class="mt-8 flex justify-center">
+        <button id="generate-plan-btn" 
+                class="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+            Generate Course Plan
+        </button>
+    </div>
+
     <!-- Footer -->
     <footer class="bg-blue-900 text-white py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -1013,6 +1021,130 @@
                 }
             }
         }
+
+        function generateCoursePlan() {
+            // 获取表单数据
+            const programUrl = document.getElementById('program-url').value;
+            const semester = document.getElementById('current-semester').value;
+            const careerPath = document.getElementById('career-path').value;
+            const currentCourses = document.getElementById('current-courses').value.split(',').map(course => course.trim());
+            const requirements = document.getElementById('interests').value;
+            
+            // 显示加载状态
+            document.getElementById('loading-indicator').classList.remove('hidden');
+            document.getElementById('course-plan-container').classList.add('hidden');
+            
+            // 创建请求数据
+            const requestData = {
+                program_url: programUrl,
+                semester: semester,
+                career_path: careerPath,
+                current_courses: currentCourses,
+                requirements: requirements
+            };
+            
+            // 调用API
+            fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    message: `Generate a course plan for a student in ${semester} semester who wants to pursue a career in ${careerPath}. 
+                    Their program URL is: ${programUrl}. 
+                    Current courses: ${currentCourses.join(', ')}. 
+                    Additional requirements: ${requirements}`
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // 隐藏加载状态
+                document.getElementById('loading-indicator').classList.add('hidden');
+                document.getElementById('course-plan-container').classList.remove('hidden');
+                
+                // 解析AI响应
+                const planData = parseAIResponse(data.response || data.error);
+                
+                // 渲染学期课程
+                renderSemesters(planData.semesters);
+                
+                // 渲染图表
+                renderCreditHoursChart(planData.semesters);
+                
+                // 显示总结
+                document.getElementById('plan-summary').innerHTML = planData.summary || 
+                    "这个计划确保你在AI/ML领域打下坚实基础，获得实践经验，并建立一个可以向潜在雇主展示的项目组合。";
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('loading-indicator').classList.add('hidden');
+                document.getElementById('course-plan-container').classList.remove('hidden');
+                document.getElementById('plan-summary').textContent = '生成课程计划时出错。请稍后再试。';
+            });
+        }
+
+        // 渲染学分小时图表
+        function renderCreditHoursChart(semesters) {
+            // 准备图表数据
+            const labels = semesters.map(semester => semester.name);
+            const creditData = semesters.map(semester => semester.totalCredits || 15); // 默认为15学分
+            
+            // 添加额外的两个条目
+            labels.push('计划背景说明');
+            labels.push('重要截止日期');
+            creditData.push(12);
+            creditData.push(15);
+            
+            // 获取图表上下文
+            const ctx = document.getElementById('credit-hours-chart').getContext('2d');
+            
+            // 销毁现有图表（如果存在）
+            if (window.creditChart) {
+                window.creditChart.destroy();
+            }
+            
+            // 创建新图表
+            window.creditChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '学分小时',
+                        data: creditData,
+                        backgroundColor: labels.map((_, index) => {
+                            // 前三个学期使用蓝色，后两个使用灰色
+                            return index < 3 ? 'rgba(59, 130, 246, 0.8)' : 'rgba(156, 163, 175, 0.8)';
+                        }),
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 18,
+                            title: {
+                                display: true,
+                                text: '学分小时'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '学期'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 添加生成课程计划按钮的点击事件
+        document.getElementById('generate-plan-btn').addEventListener('click', function() {
+            generateCoursePlan();
+        });
     </script>
 </body>
 </html> 

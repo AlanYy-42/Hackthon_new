@@ -310,89 +310,33 @@ class CourseRecommender:
         
         return available_courses
     
-    def recommend_courses(self, student_id=None, major=None, completed_courses=None, num_recommendations=5):
+    def recommend_courses(self, student_data=None, num_recommendations=5):
         """推荐课程给学生"""
-        if not major and not student_id:
+        # 从student_data中提取信息
+        if student_data is None:
             return []
         
-        if not completed_courses:
-            completed_courses = []
-        
-        # 首先尝试使用协同过滤推荐
-        if student_id is not None:
-            # 为特定学生ID获取推荐
-            # 从训练数据中找到该学生
-            for student in self.training_data:
-                if student["student_id"] == student_id:
-                    # 提取学生已完成的课程
-                    completed_courses = student["completed_courses"]
-                    major = student["major"]
-                    break
+        major = student_data.get('major', '')
+        completed_courses = student_data.get('completed_courses', [])
         
         # 如果没有完成任何课程，推荐该专业的第一门核心课程
         if not completed_courses and major:
-            return self.courses[major]["core"][:num_recommendations]
+            # 确保major存在于self.courses中
+            if major in self.courses:
+                return self.courses[major]["core"][:num_recommendations]
+            else:
+                # 如果专业不存在，返回CS专业的核心课程
+                return self.courses["CS"]["core"][:num_recommendations]
         
-        # 提取特征
-        if major:
-            # 为新学生生成特征
-            features = [
-                len(completed_courses),  # 用已完成课程数替代学期
-                3.0,  # 默认GPA
-                len(completed_courses),
-                80.0  # 默认平均分
-            ]
-            
-            # One-hot编码专业
-            major_feature = [0] * 8  # 假设有8个专业
-            try:
-                major_idx = ["CS", "MATH", "ENG", "BIO", "PHYS", "CHEM", "ECON", "PSYCH"].index(major)
-                major_feature[major_idx] = 1
-            except ValueError:
-                # 如果专业不在列表中，使用CS作为默认
-                major_idx = 0
-                major_feature[major_idx] = 1
-            
-            # 组合所有特征
-            X = [features + major_feature]
-            
-            # 缩放特征
-            X_scaled = self.preprocessor.transform(X)
-            
-            # 找到最近邻
-            distances, indices = self.model.kneighbors(X_scaled)
-            
-            # 根据相似学生获取推荐
-            final_recommendations = []
-            seen_courses = set(completed_courses)
-            
-            for idx in indices[0]:
-                similar_student = self.training_data[idx]
-                for course in similar_student["completed_courses"]:
-                    if course not in seen_courses and self._check_prerequisites_met(course, completed_courses):
-                        seen_courses.add(course)
-                        final_recommendations.append(course)
-                        
-                        # 只推荐最多5门课
-                        if len(final_recommendations) >= num_recommendations:
-                            break
+        # 获取下一步可以学习的课程
+        available_courses = self._get_next_courses(completed_courses, major)
         
-        # 如果从相似学生中没有获得足够的推荐，使用基于规则的方法补充
-        if len(final_recommendations) < num_recommendations:
-            # 获取下一步可以学习的课程
-            rule_based_recommendations = self._get_next_courses(completed_courses, major)
-            
-            # 添加尚未推荐的课程
-            for course in rule_based_recommendations:
-                if course not in completed_courses and course not in seen_courses:
-                    seen_courses.add(course)
-                    final_recommendations.append(course)
-                    
-                    # 只推荐最多5门课
-                    if len(final_recommendations) >= num_recommendations:
-                        break
+        # 如果没有可用课程，返回一些通用课程
+        if not available_courses:
+            # 返回一些通用的AI/ML课程
+            return ["CS101", "CS201", "MATH101", "AI101", "ML101"][:num_recommendations]
         
-        return final_recommendations[:num_recommendations]  # 确保最多返回5门课程
+        return available_courses[:num_recommendations]  # 确保最多返回指定数量的课程
     
     def _check_prerequisites_met(self, course, completed_courses):
         """检查是否满足课程的先修要求"""

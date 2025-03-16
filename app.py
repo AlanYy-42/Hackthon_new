@@ -204,30 +204,28 @@ def get_recommendations():
     if not data:
         return jsonify({"error": "No data provided"}), 400
     
-    student_id = data.get('student_id')
-    if not student_id:
-        return jsonify({"error": "Student ID is required"}), 400
-    
-    student = Student.query.get(student_id)
-    if not student:
-        return jsonify({"error": "Student not found"}), 404
-    
-    completed_enrollments = Enrollment.query.filter_by(
-        student_id=student_id, 
-        status="completed"
-    ).all()
-    completed_courses = [e.course.code for e in completed_enrollments]
-    
+    # 直接使用传入的数据
     student_data = {
-        'major': student.major,
-        'completed_courses': completed_courses,
-        'gpa': student.gpa
+        'major': data.get('major', ''),
+        'completed_courses': data.get('completed_courses', []),
+        'gpa': data.get('gpa', 3.0)
     }
     
+    # 调用推荐器
     recommendations = recommender.recommend_courses(student_data)
-    recommended_courses = Course.query.filter(Course.code.in_(recommendations)).all()
     
-    return jsonify([course.to_dict() for course in recommended_courses])
+    # 如果recommendations是课程代码列表，尝试获取完整课程信息
+    if recommendations and isinstance(recommendations[0], str):
+        # 尝试从数据库获取课程信息
+        try:
+            recommended_courses = Course.query.filter(Course.code.in_(recommendations)).all()
+            if recommended_courses:
+                return jsonify([course.to_dict() for course in recommended_courses])
+        except Exception as e:
+            print(f"Error fetching courses from database: {str(e)}")
+    
+    # 如果无法从数据库获取，或者推荐不是课程代码列表，返回简单的课程代码列表
+    return jsonify([{"code": code, "name": f"Course {code}", "credits": 3} for code in recommendations])
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
