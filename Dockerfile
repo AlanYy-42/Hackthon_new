@@ -27,20 +27,5 @@ RUN echo "Checking environment variables:" && \
 # 8️⃣ 暴露端口
 EXPOSE 7860
 
-# 🔟 创建一个启动脚本
-RUN echo '#!/bin/bash\n\
-# 确保数据库目录存在并有正确权限\n\
-mkdir -p /app/instance\n\
-chmod -R 777 /app/instance\n\
-touch /app/instance/studypath.db\n\
-chmod 666 /app/instance/studypath.db\n\
-\n\
-# 初始化数据库\n\
-python seed_db.py\n\
-\n\
-# 启动应用\n\
-exec python app.py\n\
-' > /app/start.sh && chmod +x /app/start.sh
-
-# 🔟🔟 启动命令
-CMD ["/app/start.sh"]
+# 🔟 直接启动应用，不再使用 start.sh
+CMD ["python", "app.py"]

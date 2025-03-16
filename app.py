@@ -30,6 +30,47 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 # Initialize database
 db.init_app(app)
 
+# 定义一个数据库初始化函数
+def init_database():
+    with app.app_context():
+        db.create_all()
+        print("Database tables created successfully.")
+        
+        # 这里添加数据库种子数据（不再从 seed_db.py 导入）
+        from models import Course, Student
+        
+        # 添加课程
+        courses = [
+            Course(code="CS101", name="Introduction to Computer Science", credits=3, description="Basic concepts of computer science"),
+            Course(code="CS201", name="Data Structures", credits=4, description="Advanced data structures and algorithms"),
+            Course(code="MATH101", name="Calculus I", credits=4, description="Introduction to calculus"),
+            # 添加更多课程...
+        ]
+        
+        # 添加学生
+        students = [
+            Student(name="Alice Smith", email="alice@example.com", major="Computer Science"),
+            Student(name="Bob Johnson", email="bob@example.com", major="Mathematics"),
+            # 添加更多学生...
+        ]
+        
+        # 将数据添加到数据库
+        for course in courses:
+            existing = Course.query.filter_by(code=course.code).first()
+            if not existing:
+                db.session.add(course)
+        
+        for student in students:
+            existing = Student.query.filter_by(email=student.email).first()
+            if not existing:
+                db.session.add(student)
+        
+        db.session.commit()
+        print("Database seeded successfully!")
+
+# 初始化数据库
+init_database()
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -224,14 +265,6 @@ def get_student_progress(student_id):
         "completed_credits": completed_credits,
         "completion_percentage": (completed_credits / total_credits * 100) if total_credits > 0 else 0
     })
-
-# 在应用上下文中创建表并初始化数据
-with app.app_context():
-    db.create_all()
-    # 导入并运行 seed_database 函数
-    from seed_db import seed_database
-    seed_database()
-    print("Database initialized in memory.")
 
 if __name__ == '__main__':
     # Get port, Hugging Face Space uses port 7860
