@@ -14,7 +14,8 @@ RUN pip install --upgrade pip && \
 # 5️⃣ 创建必要目录并赋予权限
 RUN mkdir -p /app/models && chmod -R 777 /app/models && \
     mkdir -p /app/instance && chmod -R 777 /app/instance && \
-    mkdir -p /tmp/mpl_config && chmod -R 777 /tmp/mpl_config
+    mkdir -p /tmp/mpl_config && chmod -R 777 /tmp/mpl_config && \
+    mkdir -p /app/visualizations && chmod -R 777 /app/visualizations
 
 # 6️⃣ 设置 Matplotlib 缓存路径，避免权限问题
 ENV MPLCONFIGDIR=/tmp/mpl_config
@@ -23,6 +24,7 @@ ENV MPLCONFIGDIR=/tmp/mpl_config
 ENV PYTHONPATH=/app
 ENV FLASK_APP=app.py
 ENV FLASK_ENV=production
+ENV SQLALCHEMY_DATABASE_URI=sqlite:////app/instance/studypath.db
 
 # 8️⃣ 打印环境变量状态（不显示值）
 RUN echo "Checking environment variables:" && \
@@ -31,5 +33,20 @@ RUN echo "Checking environment variables:" && \
 # 9️⃣ 暴露端口
 EXPOSE 7860
 
-# 🔟 启动应用（先初始化数据库，再启动 Flask）
-CMD ["sh", "-c", "python seed_db.py && exec python app.py"]
+# 🔟 创建一个启动脚本
+RUN echo '#!/bin/bash\n\
+# 确保数据库目录存在并有正确权限\n\
+mkdir -p /app/instance\n\
+chmod -R 777 /app/instance\n\
+touch /app/instance/studypath.db\n\
+chmod 666 /app/instance/studypath.db\n\
+\n\
+# 初始化数据库\n\
+python seed_db.py\n\
+\n\
+# 启动应用\n\
+exec python app.py\n\
+' > /app/start.sh && chmod +x /app/start.sh
+
+# 🔟🔟 启动命令
+CMD ["/app/start.sh"]
