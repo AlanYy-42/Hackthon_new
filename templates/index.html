@@ -1217,6 +1217,107 @@
         document.getElementById('generate-plan-btn').addEventListener('click', function() {
             generateCoursePlan();
         });
+
+        // 添加测试按钮
+        document.addEventListener('DOMContentLoaded', function() {
+            // 创建测试按钮
+            const testButton = document.createElement('button');
+            testButton.textContent = '本地测试';
+            testButton.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500';
+            testButton.onclick = testLocalData;
+            
+            // 添加到页面
+            document.body.appendChild(testButton);
+        });
+
+        // 本地测试函数
+        function testLocalData() {
+            console.log("开始本地测试");
+            
+            // 模拟API响应数据
+            const mockResponse = `
+# Personalized Course Plan for AI Studies
+
+### **Spring 2025 (Current Semester)**
+Total Credits: 15
+
+1. **Introduction to Artificial Intelligence** (CS301) - 3 credits
+   - Fundamental concepts of AI, including search algorithms, knowledge representation, and reasoning.
+
+2. **Machine Learning Fundamentals** (CS401) - 4 credits
+   - Introduction to machine learning algorithms, supervised and unsupervised learning.
+
+3. **Linear Algebra for AI** (MATH301) - 4 credits
+   - Vector spaces, matrices, and linear transformations with applications to AI.
+
+4. **Python Programming for AI** (CS201) - 4 credits
+   - Advanced Python programming techniques for AI applications.
+
+### **Fall 2025**
+Total Credits: 15
+
+1. **Deep Learning** (CS402) - 4 credits
+   - Neural networks, backpropagation, convolutional networks, and recurrent networks.
+
+2. **Natural Language Processing** (CS403) - 3 credits
+   - Computational approaches to processing and understanding human language.
+
+3. **Computer Vision** (CS404) - 4 credits
+   - Image processing, feature extraction, object recognition, and scene understanding.
+
+4. **AI Ethics and Society** (PHIL301) - 4 credits
+   - Ethical considerations in AI development and deployment.
+
+### **Spring 2026**
+Total Credits: 14
+
+1. **Reinforcement Learning** (CS501) - 4 credits
+   - Learning through interaction with environments, Q-learning, and policy gradients.
+
+2. **AI Capstone Project** (CS502) - 6 credits
+   - Comprehensive project applying AI techniques to real-world problems.
+
+3. **AI in Industry** (CS503) - 4 credits
+   - Applications of AI in various industries and business contexts.
+
+## Additional Recommendations
+
+### Internships
+- Apply for summer internships at tech companies with AI focus
+- Consider research assistantships with professors working on AI projects
+
+### Certifications
+- TensorFlow Developer Certificate
+- AWS Machine Learning Specialty
+
+### Extracurriculars
+- Join the university's AI or Machine Learning club
+- Participate in Kaggle competitions to build your portfolio
+
+## Summary
+
+This plan ensures you graduate with a strong foundation in AI/ML, practical experience, and a portfolio of projects to showcase to potential employers. Let me know if you'd like further adjustments or additional guidance! 🚀
+`;
+
+            // 隐藏加载状态
+            document.getElementById('loading-indicator').classList.add('hidden');
+            document.getElementById('course-plan-container').classList.remove('hidden');
+            
+            // 解析模拟响应
+            const planData = parseAIResponse(mockResponse);
+            
+            console.log("解析后的数据:", planData);
+            
+            // 渲染学期课程
+            renderSemesters(planData.semesters);
+            
+            // 渲染图表
+            renderCreditHoursChart(planData.semesters);
+            
+            // 显示总结
+            document.getElementById('plan-summary').innerHTML = planData.summary || 
+                "这个计划确保你在AI/ML领域打下坚实基础，获得实践经验，并建立一个可以向潜在雇主展示的项目组合。";
+        }
     </script>
 </body>
 </html> 
