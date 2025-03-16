@@ -20,10 +20,8 @@ print("API exists:", "API" in os.environ)
 # Initialize Flask app
 app = Flask(__name__)
 
-# 确保数据库路径一致
-basedir = os.path.abspath(os.path.dirname(__file__))
-db_path = os.path.join(basedir, "instance", "studypath.db")
-app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_path}"
+# 确保数据库使用内存模式
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # 添加CORS支持
@@ -227,10 +225,13 @@ def get_student_progress(student_id):
         "completion_percentage": (completed_credits / total_credits * 100) if total_credits > 0 else 0
     })
 
-# 替换@app.before_first_request装饰器
+# 在应用上下文中创建表并初始化数据
 with app.app_context():
     db.create_all()
-    print("Database tables created.")
+    # 导入并运行 seed_database 函数
+    from seed_db import seed_database
+    seed_database()
+    print("Database initialized in memory.")
 
 if __name__ == '__main__':
     # Get port, Hugging Face Space uses port 7860

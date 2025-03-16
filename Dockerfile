@@ -11,25 +11,20 @@ COPY . .
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# 5️⃣ 创建必要目录并赋予权限
-RUN mkdir -p /app/models /app/instance /tmp/mpl_config /app/visualizations && \
-    chmod -R 755 /app/models /app/instance /tmp/mpl_config /app/visualizations && \
-    touch /app/instance/studypath.db && chmod 666 /app/instance/studypath.db
+# 5️⃣ 设置 Matplotlib 配置目录为 /tmp
+ENV MPLCONFIGDIR=/tmp
 
-# 6️⃣ 设置 Matplotlib 缓存路径，避免权限问题
-ENV MPLCONFIGDIR=/tmp/mpl_config
-
-# 7️⃣ 设置环境变量
+# 6️⃣ 设置环境变量
 ENV PYTHONPATH=/app
 ENV FLASK_APP=app.py
 ENV FLASK_ENV=production
-ENV SQLALCHEMY_DATABASE_URI=sqlite:////app/instance/studypath.db
+ENV SQLALCHEMY_DATABASE_URI=sqlite:///:memory:
 
-# 8️⃣ 打印环境变量状态（不显示值）
+# 7️⃣ 打印环境变量状态（不显示值）
 RUN echo "Checking environment variables:" && \
     echo "API exists: ${API:+true}"
 
-# 9️⃣ 暴露端口
+# 8️⃣ 暴露端口
 EXPOSE 7860
 
 # 🔟 创建一个启动脚本
