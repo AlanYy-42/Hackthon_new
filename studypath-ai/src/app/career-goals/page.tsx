@@ -8,6 +8,7 @@ export default function CareerGoals() {
   const [jobTitles, setJobTitles] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showRoadmap, setShowRoadmap] = useState(false)
+  const [showForm, setShowForm] = useState(true)
   
   // Example career path data
   const careerPath = [
@@ -103,6 +104,7 @@ export default function CareerGoals() {
     // Simulate API call to Gemini for learning roadmap
     setTimeout(() => {
       setShowRoadmap(true)
+      setShowForm(false)
       setIsLoading(false)
     }, 2000)
   }
@@ -124,7 +126,7 @@ export default function CareerGoals() {
     <main className="p-4 md:p-10 mx-auto max-w-7xl">
       <Title>Career Goal Planning</Title>
 
-      {!showRoadmap ? (
+      {showForm && (
         <Card className="mt-6">
           <h2 className="text-xl font-semibold text-blue-900 mb-4">Gemini Career Planning Assistant</h2>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -150,7 +152,9 @@ export default function CareerGoals() {
             </Button>
           </form>
         </Card>
-      ) : (
+      )}
+      
+      {showRoadmap && (
         <>
           <div className="mt-6">
             <Card>
@@ -159,7 +163,10 @@ export default function CareerGoals() {
                 <Button 
                   color="blue" 
                   variant="light"
-                  onClick={() => setShowRoadmap(false)}
+                  onClick={() => {
+                    setShowRoadmap(false)
+                    setShowForm(true)
+                  }}
                 >
                   Start Over
                 </Button>

@@ -9,6 +9,7 @@ export default function CoursePlanning() {
   const [isLoading, setIsLoading] = useState(false)
   const [courseRecommendations, setCourseRecommendations] = useState<any[]>([])
   const [showRecommendations, setShowRecommendations] = useState(false)
+  const [showForm, setShowForm] = useState(true)
 
   // Example data for charts
   const courseData = [
@@ -120,6 +121,7 @@ export default function CoursePlanning() {
       }
       
       setShowRecommendations(true)
+      setShowForm(false)
       setIsLoading(false)
     }, 2000)
   }
@@ -128,7 +130,7 @@ export default function CoursePlanning() {
     <main className="p-4 md:p-10 mx-auto max-w-7xl">
       <Title>Course Planning</Title>
       
-      {!showRecommendations ? (
+      {showForm && (
         <Card className="mt-6">
           <h2 className="text-xl font-semibold text-blue-900 mb-4">Gemini Course Planning Assistant</h2>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -166,7 +168,9 @@ export default function CoursePlanning() {
             </Button>
           </form>
         </Card>
-      ) : (
+      )}
+      
+      {showRecommendations && (
         <>
           <div className="mt-6">
             <Card>
@@ -175,7 +179,10 @@ export default function CoursePlanning() {
                 <Button 
                   color="blue" 
                   variant="light"
-                  onClick={() => setShowRecommendations(false)}
+                  onClick={() => {
+                    setShowRecommendations(false)
+                    setShowForm(true)
+                  }}
                 >
                   Start Over
                 </Button>
