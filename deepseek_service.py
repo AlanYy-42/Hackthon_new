@@ -6,7 +6,7 @@ load_dotenv()
 
 # 使用Hugging Face的API
 HF_API_KEY = os.getenv('HF_DEEPSEEK_API_KEY')  # 复用已有的环境变量
-HF_API_URL = "https://api-inference.huggingface.co/models/meta-llama/Llama-2-7b-chat-hf"  # 换用Llama 2模型
+HF_API_URL = "https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium"  # 使用完全开放的模型
 
 class ChatService:
     def __init__(self):
@@ -24,14 +24,10 @@ class ChatService:
             return "API密钥未配置，请联系管理员设置API密钥。"
             
         try:
-            # 使用更简单的输入格式
+            # 使用最简单的输入格式
             payload = {
-                "inputs": message,
-                "parameters": {
-                    "max_length": 500,
-                    "temperature": 0.7,
-                    "top_p": 0.95,
-                    "return_full_text": False
+                "inputs": {
+                    "text": message
                 }
             }
             
@@ -61,15 +57,15 @@ class ChatService:
             
             print(f"Parsed response data: {data}")  # 调试日志
             
-            # 解析Hugging Face的响应格式
+            # 解析响应
             if isinstance(data, list) and len(data) > 0:
-                # 如果响应是列表格式
+                # DialoGPT通常返回一个生成的文本列表
                 return data[0].get('generated_text', '抱歉，未能获取到有效回复。')
             elif isinstance(data, dict):
-                # 如果响应是字典格式
+                # 有时可能返回字典格式
                 return data.get('generated_text', data.get('answer', '抱歉，未能获取到有效回复。'))
             else:
-                return "抱歉，未能获取到有效回复。"
+                return str(data) if data else "抱歉，未能获取到有效回复。"
             
         except requests.exceptions.RequestException as e:
             print(f"Error calling Hugging Face API: {str(e)}")
