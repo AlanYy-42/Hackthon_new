@@ -277,12 +277,12 @@
             const interests = document.getElementById('interests').value;
             
             // Show loading state
-            const submitButton = this.querySelector('button[type="submit"]');
+            const submitButton = e.target.querySelector('button[type="submit"]');
             const originalText = submitButton.textContent;
-            submitButton.textContent = 'Analyzing program...';
+            submitButton.textContent = 'Generating...';
             submitButton.disabled = true;
             
-            // First, crawl the program URL to get information
+            // Call API to crawl program URL
             fetch('/api/crawl-program', {
                 method: 'POST',
                 headers: {
@@ -291,156 +291,74 @@
                 body: JSON.stringify({ url: programUrl })
             })
             .then(response => {
-                if (!response.ok && response.status !== 200) {
-                    throw new Error('Failed to crawl program URL');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch program information');
                 }
                 return response.json();
             })
-            .then(programInfo => {
-                console.log('Program info:', programInfo);
+            .then(programData => {
+                // Now use the program data to generate a chat message
+                const message = `
+                    I'm planning my academic journey with the following information:
+                    - Current semester: ${currentSemester}
+                    - Program: ${programData.title}
+                    - Career goal: ${careerPath}
+                    - Interests: ${interests}
+                    
+                    The program includes courses like: ${programData.courses.join(', ')}
+                    
+                    Can you recommend a course plan for me?
+                `;
                 
-                // Check if there was an error but we still got some data
-                if (programInfo.error) {
-                    console.warn('Warning:', programInfo.error);
-                }
-                
-                // Update button text
-                submitButton.textContent = 'Generating course plan...';
-                
-                // Create a prompt for Gemini with the crawled information
-                let programDetails = '';
-                
-                if (programInfo.title) {
-                    programDetails += `Program Title: ${programInfo.title}\n`;
-                }
-                
-                if (programInfo.description) {
-                    programDetails += `Program Description: ${programInfo.description}\n`;
-                }
-                
-                if (programInfo.courses && programInfo.courses.length > 0) {
-                    programDetails += `Available Courses: ${programInfo.courses.join(', ')}\n`;
-                }
-                
-                if (programInfo.credits) {
-                    programDetails += `Credit Requirements: ${programInfo.credits}\n`;
-                }
-                
-                if (programInfo.ai_summary) {
-                    programDetails += `Program Summary: ${programInfo.ai_summary}\n`;
-                }
-                
-                const prompt = `Please create a personalized course plan for a student with the following information:
-                - Current Semester: ${currentSemester}
-                - Career Path: ${careerPath}
-                - Academic Interests: ${interests}
-                
-                Program Information:
-                ${programDetails || programUrl}
-                
-                Please provide specific course recommendations that align with their career goals and interests, based on the program information provided.`;
-                
-                // Call the backend API with the enhanced prompt
+                // Call chat API with the message
                 return fetch('/api/chat', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ message: prompt })
+                    body: JSON.stringify({ message: message })
                 });
             })
             .then(response => {
                 if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                    throw new Error('Failed to get AI response');
                 }
                 return response.json();
             })
             .then(data => {
-                console.log('API response:', data);
+                // Create a new div to display the response
+                const responseDiv = document.createElement('div');
+                responseDiv.className = 'mt-6 p-4 bg-blue-50 rounded-lg';
+                responseDiv.innerHTML = `
+                    <h3 class="text-lg font-semibold text-blue-900 mb-2">Your Personalized Course Plan</h3>
+                    <div class="text-blue-800 whitespace-pre-line">${data.response}</div>
+                `;
                 
-                // Check if the response contains an error message about API key
-                if (data.response && data.response.includes('API密钥未配置')) {
-                    // 创建一个模拟的课程计划响应
-                    const mockResponse = `
-                    # 课程计划建议
-                    
-                    根据您提供的信息，以下是为您定制的课程计划建议：
-                    
-                    ## 推荐课程
-                    
-                    1. **数据结构与算法** (CS201) - 4学分
-                       - 这是软件开发的基础课程，对于任何编程相关职业都至关重要
-                    
-                    2. **软件工程** (SE301) - 3学分
-                       - 学习软件开发生命周期和项目管理技能
-                    
-                    3. **Web开发** (WD401) - 4学分
-                       - 学习前端和后端开发技术
-                    
-                    4. **人工智能导论** (AI301) - 3学分
-                       - 基于您对AI的兴趣，这门课程将为您提供AI基础知识
-                    
-                    ## 学习路径
-                    
-                    ${currentSemester}学期:
-                    - 数据结构与算法
-                    - 软件工程
-                    
-                    下一学期:
-                    - Web开发
-                    - 人工智能导论
-                    
-                    ## 职业建议
-                    
-                    作为一名未来的${careerPath}，建议您:
-                    1. 参与开源项目积累实践经验
-                    2. 建立个人项目组合展示您的技能
-                    3. 寻找实习机会获取行业经验
-                    
-                    祝您学习顺利！
-                    `;
-                    
-                    // Display the mock response
-                    const responseDiv = document.createElement('div');
-                    responseDiv.className = 'mt-6 bg-white p-6 rounded-xl shadow-md';
-                    responseDiv.innerHTML = `
-                        <h3 class="text-xl font-semibold text-blue-900 mb-4">AI-Generated Course Plan</h3>
-                        <div class="prose prose-blue">${mockResponse.replace(/\n/g, '<br>')}</div>
-                    `;
-                    
-                    // Insert the response before the chart
-                    const chartContainer = document.querySelector('#course-planning .bg-white:nth-child(3)');
-                    chartContainer.parentNode.insertBefore(responseDiv, chartContainer);
-                } else if (data.response) {
-                    // Display the AI-generated response
-                    const responseDiv = document.createElement('div');
-                    responseDiv.className = 'mt-6 bg-white p-6 rounded-xl shadow-md';
-                    responseDiv.innerHTML = `
-                        <h3 class="text-xl font-semibold text-blue-900 mb-4">AI-Generated Course Plan</h3>
-                        <div class="prose prose-blue">${data.response.replace(/\n/g, '<br>')}</div>
-                    `;
-                    
-                    // Insert the response before the chart
-                    const chartContainer = document.querySelector('#course-planning .bg-white:nth-child(3)');
-                    chartContainer.parentNode.insertBefore(responseDiv, chartContainer);
-                } else {
-                    throw new Error('No valid response received');
+                // Find the form's parent and append the response after the form
+                const formElement = document.getElementById('course-planning-form');
+                if (formElement && formElement.parentNode) {
+                    formElement.parentNode.appendChild(responseDiv);
                 }
                 
-                // Restore button state
+                // Reset button state
                 submitButton.textContent = originalText;
                 submitButton.disabled = false;
-                
-                // Scroll to the response
-                document.querySelector('#course-planning .bg-white:nth-child(3)').scrollIntoView({
-                    behavior: 'smooth'
-                });
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('An error occurred: ' + error.message + '\n\nPlease try again or use a different URL.');
                 
-                // Restore button state
+                // Create an error message
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'mt-4 p-3 bg-red-100 text-red-700 rounded-lg';
+                errorDiv.textContent = 'An error occurred while generating your course plan. Please try again.';
+                
+                // Find the form's parent and append the error after the form
+                const formElement = document.getElementById('course-planning-form');
+                if (formElement && formElement.parentNode) {
+                    formElement.parentNode.appendChild(errorDiv);
+                }
+                
+                // Reset button state
                 submitButton.textContent = originalText;
                 submitButton.disabled = false;
             });

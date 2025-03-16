@@ -9,21 +9,10 @@ load_dotenv()
 # Add delay to ensure environment variables have time to load
 time.sleep(1)
 
-# Safely get API key
-GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
-
-# If API key is not in environment variables, try to get from other sources
-if not GOOGLE_API_KEY:
-    try:
-        # Try to read directly from .env file
-        with open('.env', 'r') as f:
-            for line in f:
-                if line.startswith('GOOGLE_API_KEY='):
-                    GOOGLE_API_KEY = line.strip().split('=', 1)[1].strip('"\'')
-                    os.environ['GOOGLE_API_KEY'] = GOOGLE_API_KEY
-                    break
-    except Exception as e:
-        print(f"Error reading .env file: {str(e)}")
+# For Hugging Face deployment, use a hardcoded key
+# In production, this should be set as an environment variable
+GOOGLE_API_KEY = "AIzaSyDJC5a7hQxfvXRLNFzpTGfnAdOGjLYjHpI"
+os.environ['GOOGLE_API_KEY'] = GOOGLE_API_KEY
 
 print("GOOGLE_API_KEY loaded:", bool(GOOGLE_API_KEY))  # Only print if exists, not the actual value
 
