@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 from models import db, Course, Student, Enrollment
 from ml_service import recommender
-from deepseek_service import deepseek_service
+from deepseek_service import chat_service
 
 # Load environment variables
 load_dotenv()
@@ -97,12 +97,12 @@ def chat():
     message = data['message']
     print(f"Processing message: {message}")  # 调试日志
     
-    response = deepseek_service.chat(message)
+    response = chat_service.chat(message)
     print(f"API response: {response}")  # 调试日志
     
     if response is None:
-        print("Failed to get response from DeepSeek")  # 调试日志
-        return jsonify({"error": "Failed to get response from DeepSeek"}), 500
+        print("Failed to get response from API")  # 调试日志
+        return jsonify({"error": "Failed to get response from API"}), 500
     
     return jsonify({"response": response})
 
