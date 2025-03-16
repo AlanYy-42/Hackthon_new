@@ -10,7 +10,7 @@ load_dotenv()
 
 # 打印环境变量（不包含实际值）用于调试
 print("Environment variables loaded:")
-print("HF_DEEPSEEK_API_KEY exists:", "HF_DEEPSEEK_API_KEY" in os.environ)
+print("GOOGLE_API_KEY exists:", "GOOGLE_API_KEY" in os.environ)
 
 # Initialize Flask app
 app = Flask(__name__)
