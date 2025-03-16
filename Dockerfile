@@ -13,6 +13,10 @@ RUN apt-get update && apt-get install -y \
     libtesseract-dev \
     libgl1-mesa-glx \
     libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    libfontconfig1 \
     && rm -rf /var/lib/apt/lists/*
 
 # 4️⃣ 安装 Google Chrome

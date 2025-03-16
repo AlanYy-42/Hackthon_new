@@ -9,18 +9,26 @@ from bs4 import BeautifulSoup
 import re
 import json
 from flask_cors import CORS
-# 导入计算机视觉和OCR爬虫所需的库
-import time
-import cv2
-import numpy as np
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
-from PIL import Image
-import pytesseract
-import io
+
+# 尝试导入计算机视觉和OCR爬虫所需的库
+try:
+    import time
+    import cv2
+    import numpy as np
+    from selenium import webdriver
+    from selenium.webdriver.chrome.service import Service
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.common.by import By
+    from webdriver_manager.chrome import ChromeDriverManager
+    from PIL import Image
+    import pytesseract
+    import io
+    
+    CV_IMPORTS_SUCCESSFUL = True
+    print("计算机视觉和OCR库导入成功")
+except ImportError as e:
+    CV_IMPORTS_SUCCESSFUL = False
+    print(f"计算机视觉和OCR库导入失败: {str(e)}")
 
 # Load environment variables at the start
 load_dotenv()
@@ -386,6 +394,23 @@ def get_student_progress(student_id):
 
 @app.route('/api/vision-crawler', methods=['POST'])
 def vision_crawler():
+    # 检查计算机视觉库是否成功导入
+    if not CV_IMPORTS_SUCCESSFUL:
+        return jsonify({
+            "success": False,
+            "error": "计算机视觉和OCR库导入失败，无法使用此功能",
+            "title": "Computer Science Program",
+            "description": "计算机视觉爬取功能不可用，返回默认数据。",
+            "courses": [
+                "CS101 - Introduction to Computer Science",
+                "CS201 - Data Structures",
+                "CS301 - Algorithms",
+                "CS401 - Database Systems",
+                "CS501 - Software Engineering"
+            ],
+            "credits": "120 credits required for graduation"
+        }), 200
+    
     data = request.json
     if not data or 'url' not in data:
         return jsonify({"error": "URL is required"}), 400
