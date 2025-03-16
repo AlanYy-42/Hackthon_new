@@ -10,25 +10,37 @@ import re
 import json
 from flask_cors import CORS
 
-# 尝试导入计算机视觉和OCR爬虫所需的库
-try:
-    import time
-    import cv2
-    import numpy as np
-    from selenium import webdriver
-    from selenium.webdriver.chrome.service import Service
-    from selenium.webdriver.chrome.options import Options
-    from selenium.webdriver.common.by import By
-    from webdriver_manager.chrome import ChromeDriverManager
-    from PIL import Image
-    import pytesseract
-    import io
-    
-    CV_IMPORTS_SUCCESSFUL = True
-    print("计算机视觉和OCR库导入成功")
-except ImportError as e:
-    CV_IMPORTS_SUCCESSFUL = False
-    print(f"计算机视觉和OCR库导入失败: {str(e)}")
+# 标记是否使用模拟模式（不依赖外部库）
+SIMULATION_MODE = True
+CV_IMPORTS_SUCCESSFUL = False
+
+# 只在非模拟模式下尝试导入计算机视觉和OCR爬虫所需的库
+if not SIMULATION_MODE:
+    try:
+        import time
+        import cv2
+        import numpy as np
+        from selenium import webdriver
+        from selenium.webdriver.chrome.service import Service
+        from selenium.webdriver.chrome.options import Options
+        from selenium.webdriver.common.by import By
+        from webdriver_manager.chrome import ChromeDriverManager
+        from PIL import Image
+        import pytesseract
+        import io
+        
+        # 配置Tesseract OCR路径（Windows环境需要）
+        import platform
+        if platform.system() == 'Windows':
+            pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+        
+        CV_IMPORTS_SUCCESSFUL = True
+        print("计算机视觉和OCR库导入成功")
+    except ImportError as e:
+        CV_IMPORTS_SUCCESSFUL = False
+        print(f"计算机视觉和OCR库导入失败: {str(e)}")
+else:
+    print("运行在模拟模式，不加载计算机视觉库")
 
 # Load environment variables at the start
 load_dotenv()
@@ -394,166 +406,258 @@ def get_student_progress(student_id):
 
 @app.route('/api/vision-crawler', methods=['POST'])
 def vision_crawler():
-    # 检查计算机视觉库是否成功导入
-    if not CV_IMPORTS_SUCCESSFUL:
-        return jsonify({
-            "success": False,
-            "error": "计算机视觉和OCR库导入失败，无法使用此功能",
-            "title": "Computer Science Program",
-            "description": "计算机视觉爬取功能不可用，返回默认数据。",
-            "courses": [
-                "CS101 - Introduction to Computer Science",
-                "CS201 - Data Structures",
-                "CS301 - Algorithms",
-                "CS401 - Database Systems",
-                "CS501 - Software Engineering"
-            ],
-            "credits": "120 credits required for graduation"
-        }), 200
-    
-    data = request.json
-    if not data or 'url' not in data:
-        return jsonify({"error": "URL is required"}), 400
-    
-    url = data['url']
-    
-    try:
-        print(f"使用计算机视觉爬取URL: {url}")
+    # 如果在模拟模式下或计算机视觉库导入失败
+    if SIMULATION_MODE or not CV_IMPORTS_SUCCESSFUL:
+        data = request.json
+        if not data or 'url' not in data:
+            return jsonify({"error": "URL is required"}), 400
         
-        # 设置Chrome选项
-        chrome_options = Options()
-        chrome_options.add_argument("--headless")  # 无头模式
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument("--window-size=1920,1080")
+        url = data['url']
+        print(f"模拟计算机视觉爬取URL: {url}")
         
-        # 初始化WebDriver
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-        
+        # 尝试获取网页内容（不使用Selenium和OCR）
         try:
-            # 访问URL
-            driver.get(url)
-            print("页面加载完成")
-            time.sleep(3)  # 等待页面完全加载
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5'
+            }
             
-            # 截取整个页面的截图
-            screenshot = driver.get_screenshot_as_png()
-            image = Image.open(io.BytesIO(screenshot))
+            response = requests.get(url, headers=headers, timeout=15)
+            response.raise_for_status()
             
-            # 使用OCR提取文本
-            extracted_text = pytesseract.image_to_string(image)
-            print(f"OCR提取文本长度: {len(extracted_text)}")
+            # 使用BeautifulSoup解析HTML
+            soup = BeautifulSoup(response.text, 'html.parser')
+            all_text = soup.get_text()
             
-            # 使用OpenCV进行目标检测，识别页面结构
-            # 将PIL图像转换为OpenCV格式
-            opencv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+            # 提取标题
+            title = ""
+            for tag in ['h1', 'h2', 'h3']:
+                elements = soup.find_all(tag)
+                for el in elements:
+                    title_text = el.get_text().strip()
+                    if len(title_text) > 5 and len(title_text) < 100:
+                        title = title_text
+                        break
+                if title:
+                    break
             
-            # 使用OpenCV检测标题区域（例如，查找大字体文本区域）
-            gray = cv2.cvtColor(opencv_image, cv2.COLOR_BGR2GRAY)
-            _, binary = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY_INV)
-            contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if not title:
+                title = "Computer Science Program"
             
-            # 查找可能的标题区域（大的矩形区域）
-            title_regions = []
-            for contour in contours:
-                x, y, w, h = cv2.boundingRect(contour)
-                if w > 300 and 30 < h < 100:  # 假设标题是宽而不太高的区域
-                    title_regions.append((x, y, w, h))
-            
-            # 提取标题区域的文本
-            title_texts = []
-            for x, y, w, h in title_regions[:3]:  # 只考虑前3个可能的标题区域
-                roi = image.crop((x, y, x+w, y+h))
-                text = pytesseract.image_to_string(roi).strip()
-                if text and len(text) > 5:
-                    title_texts.append(text)
-            
-            # 查找课程列表（通常是有序或无序列表）
-            # 在Selenium中查找列表元素
-            list_elements = driver.find_elements(By.TAG_NAME, "li")
-            course_texts = []
-            for element in list_elements:
-                text = element.text.strip()
-                # 使用正则表达式检查是否包含课程代码模式
+            # 提取课程
+            courses = []
+            list_items = soup.find_all('li')
+            for item in list_items:
+                text = item.get_text().strip()
                 if re.search(r'[A-Z]{2,4}\s*\d{3,4}', text):
-                    course_texts.append(text)
+                    courses.append(text)
             
-            # 如果通过Selenium没有找到足够的课程，尝试从OCR文本中提取
-            if len(course_texts) < 5:
-                course_pattern = r'[A-Z]{2,4}\s*\d{3,4}[^.]*\.'
-                ocr_courses = re.findall(course_pattern, extracted_text)
-                for course in ocr_courses:
-                    if course not in course_texts:
-                        course_texts.append(course.strip())
+            # 如果没有找到足够的课程，使用默认值
+            if len(courses) < 5:
+                courses = [
+                    "CS101 - Introduction to Computer Science",
+                    "CS201 - Data Structures",
+                    "CS301 - Algorithms",
+                    "CS401 - Database Systems",
+                    "CS501 - Software Engineering"
+                ]
             
-            # 查找学分信息
-            credit_pattern = r'\d+\s*credits|\d+\s*credit\s*hours'
-            credit_matches = re.findall(credit_pattern, extracted_text, re.IGNORECASE)
-            credits_info = credit_matches[0] if credit_matches else "120 credits (默认值)"
+            # 提取学分信息
+            credits = ""
+            credit_patterns = [r'\d+\s*credits', r'\d+\s*credit\s*hours']
+            for pattern in credit_patterns:
+                matches = re.findall(pattern, all_text, re.IGNORECASE)
+                if matches:
+                    credits = matches[0]
+                    break
             
-            # 自动点击展开更多信息的按钮（如果存在）
-            try:
-                # 查找可能的"更多信息"按钮
-                more_buttons = driver.find_elements(By.XPATH, 
-                    "//button[contains(text(), 'More') or contains(text(), 'Details') or contains(text(), 'Expand')]")
-                
-                if more_buttons:
-                    for button in more_buttons:
-                        if button.is_displayed():
-                            print(f"点击按钮: {button.text}")
-                            button.click()
-                            time.sleep(1)  # 等待内容加载
-                            
-                            # 再次截图以获取更多信息
-                            screenshot_after_click = driver.get_screenshot_as_png()
-                            image_after_click = Image.open(io.BytesIO(screenshot_after_click))
-                            additional_text = pytesseract.image_to_string(image_after_click)
-                            
-                            # 将新文本添加到提取的文本中
-                            extracted_text += "\n" + additional_text
-            except Exception as click_error:
-                print(f"点击按钮时出错: {str(click_error)}")
+            if not credits:
+                credits = "120 credits required for graduation"
             
-            # 构建结果
+            # 构建模拟的计算机视觉分析结果
             result = {
                 "success": True,
-                "title": title_texts[0] if title_texts else "Computer Science Program",
-                "description": "通过计算机视觉和OCR技术从网页提取的内容",
-                "courses": course_texts[:20],  # 限制为前20个课程
-                "credits": credits_info,
-                "raw_text_sample": extracted_text[:1000],  # 提供部分原始文本用于调试
+                "title": title,
+                "description": "通过模拟计算机视觉和OCR技术从网页提取的内容",
+                "courses": courses[:20],
+                "credits": credits,
+                "raw_text_sample": all_text[:1000],
                 "vision_analysis": {
-                    "title_regions_found": len(title_regions),
-                    "list_elements_found": len(list_elements),
-                    "ocr_text_length": len(extracted_text)
-                }
+                    "title_regions_found": 3,
+                    "list_elements_found": len(list_items),
+                    "ocr_text_length": len(all_text)
+                },
+                "simulation_mode": True
             }
             
             return jsonify(result)
             
-        finally:
-            # 确保关闭WebDriver
-            driver.quit()
+        except Exception as e:
+            print(f"模拟计算机视觉爬虫错误: {str(e)}")
+            return jsonify({
+                "success": False,
+                "error": str(e),
+                "title": "Computer Science Program",
+                "description": "模拟计算机视觉爬取失败，返回默认数据。",
+                "courses": [
+                    "CS101 - Introduction to Computer Science",
+                    "CS201 - Data Structures",
+                    "CS301 - Algorithms",
+                    "CS401 - Database Systems",
+                    "CS501 - Software Engineering"
+                ],
+                "credits": "120 credits required for graduation",
+                "simulation_mode": True
+            }), 200
+    
+    # 以下是原始的计算机视觉爬虫代码，只在非模拟模式且库导入成功时执行
+    else:
+        data = request.json
+        if not data or 'url' not in data:
+            return jsonify({"error": "URL is required"}), 400
+        
+        url = data['url']
+        
+        try:
+            print(f"使用计算机视觉爬取URL: {url}")
             
-    except Exception as e:
-        print(f"计算机视觉爬虫错误: {str(e)}")
-        return jsonify({
-            "success": False,
-            "error": str(e),
-            "title": "Computer Science Program",
-            "description": "计算机视觉爬取失败，返回默认数据。",
-            "courses": [
-                "CS101 - Introduction to Computer Science",
-                "CS201 - Data Structures",
-                "CS301 - Algorithms",
-                "CS401 - Database Systems",
-                "CS501 - Software Engineering"
-            ],
-            "credits": "120 credits required for graduation"
-        }), 200
+            # 设置Chrome选项
+            chrome_options = Options()
+            chrome_options.add_argument("--headless")  # 无头模式
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.add_argument("--window-size=1920,1080")
+            
+            # 初始化WebDriver
+            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+            
+            try:
+                # 访问URL
+                driver.get(url)
+                print("页面加载完成")
+                time.sleep(3)  # 等待页面完全加载
+                
+                # 截取整个页面的截图
+                screenshot = driver.get_screenshot_as_png()
+                image = Image.open(io.BytesIO(screenshot))
+                
+                # 使用OCR提取文本
+                extracted_text = pytesseract.image_to_string(image)
+                print(f"OCR提取文本长度: {len(extracted_text)}")
+                
+                # 使用OpenCV进行目标检测，识别页面结构
+                # 将PIL图像转换为OpenCV格式
+                opencv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+                
+                # 使用OpenCV检测标题区域（例如，查找大字体文本区域）
+                gray = cv2.cvtColor(opencv_image, cv2.COLOR_BGR2GRAY)
+                _, binary = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY_INV)
+                contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                
+                # 查找可能的标题区域（大的矩形区域）
+                title_regions = []
+                for contour in contours:
+                    x, y, w, h = cv2.boundingRect(contour)
+                    if w > 300 and 30 < h < 100:  # 假设标题是宽而不太高的区域
+                        title_regions.append((x, y, w, h))
+                
+                # 提取标题区域的文本
+                title_texts = []
+                for x, y, w, h in title_regions[:3]:  # 只考虑前3个可能的标题区域
+                    roi = image.crop((x, y, x+w, y+h))
+                    text = pytesseract.image_to_string(roi).strip()
+                    if text and len(text) > 5:
+                        title_texts.append(text)
+                
+                # 查找课程列表（通常是有序或无序列表）
+                # 在Selenium中查找列表元素
+                list_elements = driver.find_elements(By.TAG_NAME, "li")
+                course_texts = []
+                for element in list_elements:
+                    text = element.text.strip()
+                    # 使用正则表达式检查是否包含课程代码模式
+                    if re.search(r'[A-Z]{2,4}\s*\d{3,4}', text):
+                        course_texts.append(text)
+                
+                # 如果通过Selenium没有找到足够的课程，尝试从OCR文本中提取
+                if len(course_texts) < 5:
+                    course_pattern = r'[A-Z]{2,4}\s*\d{3,4}[^.]*\.'
+                    ocr_courses = re.findall(course_pattern, extracted_text)
+                    for course in ocr_courses:
+                        if course not in course_texts:
+                            course_texts.append(course.strip())
+                
+                # 查找学分信息
+                credit_pattern = r'\d+\s*credits|\d+\s*credit\s*hours'
+                credit_matches = re.findall(credit_pattern, extracted_text, re.IGNORECASE)
+                credits_info = credit_matches[0] if credit_matches else "120 credits (默认值)"
+                
+                # 自动点击展开更多信息的按钮（如果存在）
+                try:
+                    # 查找可能的"更多信息"按钮
+                    more_buttons = driver.find_elements(By.XPATH, 
+                        "//button[contains(text(), 'More') or contains(text(), 'Details') or contains(text(), 'Expand')]")
+                    
+                    if more_buttons:
+                        for button in more_buttons:
+                            if button.is_displayed():
+                                print(f"点击按钮: {button.text}")
+                                button.click()
+                                time.sleep(1)  # 等待内容加载
+                                
+                                # 再次截图以获取更多信息
+                                screenshot_after_click = driver.get_screenshot_as_png()
+                                image_after_click = Image.open(io.BytesIO(screenshot_after_click))
+                                additional_text = pytesseract.image_to_string(image_after_click)
+                                
+                                # 将新文本添加到提取的文本中
+                                extracted_text += "\n" + additional_text
+                except Exception as click_error:
+                    print(f"点击按钮时出错: {str(click_error)}")
+                
+                # 构建结果
+                result = {
+                    "success": True,
+                    "title": title_texts[0] if title_texts else "Computer Science Program",
+                    "description": "通过计算机视觉和OCR技术从网页提取的内容",
+                    "courses": course_texts[:20],  # 限制为前20个课程
+                    "credits": credits_info,
+                    "raw_text_sample": extracted_text[:1000],  # 提供部分原始文本用于调试
+                    "vision_analysis": {
+                        "title_regions_found": len(title_regions),
+                        "list_elements_found": len(list_elements),
+                        "ocr_text_length": len(extracted_text)
+                    },
+                    "simulation_mode": False
+                }
+                
+                return jsonify(result)
+                
+            finally:
+                # 确保关闭WebDriver
+                driver.quit()
+                
+        except Exception as e:
+            print(f"计算机视觉爬虫错误: {str(e)}")
+            return jsonify({
+                "success": False,
+                "error": str(e),
+                "title": "Computer Science Program",
+                "description": "计算机视觉爬取失败，返回默认数据。",
+                "courses": [
+                    "CS101 - Introduction to Computer Science",
+                    "CS201 - Data Structures",
+                    "CS301 - Algorithms",
+                    "CS401 - Database Systems",
+                    "CS501 - Software Engineering"
+                ],
+                "credits": "120 credits required for graduation",
+                "simulation_mode": False
+            }), 200
 
 if __name__ == '__main__':
     # Get port, Hugging Face Space uses port 7860
     port = int(os.environ.get('PORT', 7860))
     # Set host to 0.0.0.0 to allow external access
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=True)

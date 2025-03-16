@@ -13,10 +13,11 @@ time.sleep(1)
 
 # Safely get API key from environment variables
 # 尝试多种可能的环境变量名称
-API_KEY = os.getenv('API') or os.getenv('DEEPSEEK_API_KEY') or os.getenv('DEEPSEEK_API') or "sk-1ac9d3bd7e5445b18ee41d1aa60344b7"
+API_KEY = os.getenv('API') or os.getenv('DEEPSEEK_API_KEY') or os.getenv('DEEPSEEK_API')
 
 # 调试信息
 print("API key loaded:", bool(API_KEY))  # Only print if exists, not the actual value
+print("API key前10个字符:", API_KEY[:10] if API_KEY else "None")  # 只打印前10个字符，保护API密钥
 print("Environment variables:", list(os.environ.keys()))  # 打印所有环境变量名称（不打印值）
 
 # DeepSeek API configuration
@@ -64,26 +65,31 @@ Use a friendly, encouraging, and professional tone throughout your response, pro
 
 class ChatService:
     def __init__(self):
+        """Initialize the chat service with API key and empty chat history"""
         self.api_key = API_KEY
-        self.api_key_loaded = self.api_key is not None
+        self.api_key_loaded = bool(self.api_key)
         self.api_key_valid = False
         self.chat_history = []
         
-        # Test API key connection
+        print("Creating ChatService instance...")
+        print(f"API密钥加载状态: {self.api_key_loaded}")
+        print(f"API密钥前10个字符: {self.api_key[:10] if self.api_key else 'None'}")
+        
+        # Test API connection
         if self.api_key_loaded:
             try:
                 print("Testing DeepSeek API connection...")
                 self._test_api_connection()
                 self.api_key_valid = True
-                print("DeepSeek API connection successful")
+                print("DeepSeek API connection successful!")
             except Exception as e:
                 print(f"Error connecting to DeepSeek API: {str(e)}")
                 self.api_key_valid = False
-        else:
-            print("Warning: API key not found in environment variables")
+        
+        print("ChatService instance created")
     
     def _test_api_connection(self):
-        """Test API connection"""
+        """Test connection to DeepSeek API"""
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
@@ -93,10 +99,13 @@ class ChatService:
             "model": DEEPSEEK_MODEL,
             "messages": [
                 {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": "Hello"}
+                {"role": "user", "content": "Hello, are you working?"}
             ],
             "max_tokens": 10
         }
+        
+        print(f"发送测试请求到DeepSeek API: URL={DEEPSEEK_API_URL}")
+        print(f"请求头: {json.dumps(headers, default=str)}")
         
         response = requests.post(DEEPSEEK_API_URL, headers=headers, json=data)
         if response.status_code != 200:
@@ -106,6 +115,7 @@ class ChatService:
         """Send message to DeepSeek API and get reply"""
         if not self.api_key_loaded or not self.api_key_valid:
             # 不再使用硬编码的mock response，而是返回明确的错误信息
+            print(f"API密钥问题: loaded={self.api_key_loaded}, valid={self.api_key_valid}")
             return self._generate_fallback_response(message)
         
         try:
@@ -128,7 +138,15 @@ class ChatService:
                 "temperature": 0.9  # 提高temperature以增加多样性
             }
             
+            print(f"发送请求到DeepSeek API: URL={DEEPSEEK_API_URL}, 模型={DEEPSEEK_MODEL}")
+            print(f"请求头: {json.dumps(headers, default=str)}")
+            print(f"请求数据: {json.dumps(data, default=str)[:200]}...")  # 只打印部分数据
+            
             response = requests.post(DEEPSEEK_API_URL, headers=headers, json=data)
+            
+            print(f"API响应状态码: {response.status_code}")
+            if response.status_code != 200:
+                print(f"API响应内容: {response.text}")
             
             if response.status_code == 200:
                 response_data = response.json()
@@ -324,7 +342,7 @@ Total Credits: {total_credits}
                 if i == 0 and j <= len(current_courses):
                     # 使用用户当前正在修的课程
                     course_code = current_courses[j-1].upper()
-                    response += f"""{j}. **Course {j}** ({course_code}) - 4 credits
+                    response += f"""{j}. **Current Course {j}** ({course_code}) - 4 credits
    - Current course you are taking.
 
 """
@@ -342,7 +360,10 @@ Total Credits: {total_credits}
                     course_type = course_types[(i + j) % len(course_types)]
                     course_level = 100 * (i + 1) + j * 10
                     
-                    response += f"""{j}. **{course_type} Course {j}** ({program[:2].upper()}{course_level}) - 4 credits
+                    # 随机生成不同的学分值，使图表更有变化
+                    credit_value = 3 if j % 2 == 0 else 4
+                    
+                    response += f"""{j}. **{course_type} Course {j}** ({program[:2].upper()}{course_level}) - {credit_value} credits
    - {'Advanced' if i > 2 else 'Fundamental'} course related to {course_type.lower()} concepts in {program}.
 
 """

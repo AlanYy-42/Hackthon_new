@@ -613,12 +613,32 @@
             submitButton.textContent = 'Analyzing career path...';
             submitButton.disabled = true;
             
+            // 显示加载指示器
+            let loadingIndicator = document.getElementById('career-loading-indicator');
+            if (!loadingIndicator) {
+                loadingIndicator = document.createElement('div');
+                loadingIndicator.id = 'career-loading-indicator';
+                loadingIndicator.className = 'text-center py-4';
+                loadingIndicator.innerHTML = `
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <p class="mt-2 text-blue-600">生成学习路线图中...</p>
+                `;
+                this.parentNode.appendChild(loadingIndicator);
+            } else {
+                loadingIndicator.style.display = 'block';
+            }
+            
             // Create a prompt for Gemini
             const prompt = `Please create a personalized learning roadmap for a student with the following information:
             - Educational Background: ${education}
             - Desired Job Titles: ${jobTitles}
             
-            Please provide a detailed month-by-month learning plan with specific skills to develop, courses to take, and milestones to achieve. This is for a student with no prior work experience.`;
+            Please provide a detailed month-by-month learning plan with specific skills to develop, courses to take, and milestones to achieve. This is for a student with no prior work experience.
+            
+            Format your response in Markdown with clear sections for each time period (e.g., "## Months 1-3: Foundational Knowledge").
+            Include specific course recommendations with platform names.
+            Include project ideas for each phase.
+            End with job preparation advice.`;
             
             // Call the backend API
             fetch('/api/chat', {
@@ -637,12 +657,23 @@
             .then(data => {
                 console.log('API response:', data);
                 
+                // 隐藏加载指示器
+                if (loadingIndicator) {
+                    loadingIndicator.style.display = 'none';
+                }
+                
+                // 检查是否已存在响应，如果存在则移除
+                const existingResponse = document.querySelector('#career-goals .ai-response');
+                if (existingResponse) {
+                    existingResponse.remove();
+                }
+                
                 // Check if the response contains an error message about API key
-                if (data.response && data.response.includes('API密钥未配置')) {
+                if (data.response && (data.response.includes('API密钥未配置') || data.response.includes('API Connection Issue'))) {
                     // Create a mock learning path response
                     const mockResponse = `
                     # Learning Path Planning
-                    
+
                     Based on your ${education} background and ${jobTitles} career goals, here is a customized learning path:
                     
                     ## Months 1-3: Foundational Knowledge
@@ -702,27 +733,25 @@
                     
                     // Display the mock response
                     const responseDiv = document.createElement('div');
-                    responseDiv.className = 'mt-6 bg-white p-6 rounded-xl shadow-md';
+                    responseDiv.className = 'mt-6 bg-white p-6 rounded-xl shadow-md ai-response';
                     responseDiv.innerHTML = `
                         <h3 class="text-xl font-semibold text-blue-900 mb-4">AI-Generated Learning Roadmap</h3>
-                        <div class="prose prose-blue">${mockResponse.replace(/\n/g, '<br>')}</div>
+                        <div class="prose prose-blue max-w-none">${mockResponse.replace(/\n/g, '<br>')}</div>
                     `;
                     
-                    // Insert the response before the grid
-                    const gridContainer = document.querySelector('#career-goals .grid');
-                    gridContainer.parentNode.insertBefore(responseDiv, gridContainer);
+                    // Insert the response after the form
+                    this.parentNode.appendChild(responseDiv);
                 } else if (data.response) {
                     // Display the AI-generated response
                     const responseDiv = document.createElement('div');
-                    responseDiv.className = 'mt-6 bg-white p-6 rounded-xl shadow-md';
+                    responseDiv.className = 'mt-6 bg-white p-6 rounded-xl shadow-md ai-response';
                     responseDiv.innerHTML = `
                         <h3 class="text-xl font-semibold text-blue-900 mb-4">AI-Generated Learning Roadmap</h3>
-                        <div class="prose prose-blue">${data.response.replace(/\n/g, '<br>')}</div>
+                        <div class="prose prose-blue max-w-none">${data.response.replace(/\n/g, '<br>')}</div>
                     `;
                     
-                    // Insert the response before the grid
-                    const gridContainer = document.querySelector('#career-goals .grid');
-                    gridContainer.parentNode.insertBefore(responseDiv, gridContainer);
+                    // Insert the response after the form
+                    this.parentNode.appendChild(responseDiv);
                 } else {
                     throw new Error('No valid response received');
                 }
@@ -732,13 +761,23 @@
                 submitButton.disabled = false;
                 
                 // Scroll to the response
-                document.querySelector('#career-goals .grid').scrollIntoView({
-                    behavior: 'smooth'
-                });
+                const responseElement = document.querySelector('#career-goals .ai-response');
+                if (responseElement) {
+                    responseElement.scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('An error occurred: ' + error.message + '\n\nPlease try again later.');
+                
+                // 隐藏加载指示器
+                if (loadingIndicator) {
+                    loadingIndicator.style.display = 'none';
+                }
+                
+                // 显示错误消息
+                alert('生成学习路线图时出错: ' + error.message + '\n\n请稍后再试。');
                 
                 // Restore button state
                 submitButton.textContent = originalText;
@@ -807,6 +846,8 @@
 
         // 解析AI响应
         function parseAIResponse(response) {
+            console.log("解析AI响应:", response.substring(0, 500) + "...");
+            
             // 初始化结果对象
             const result = {
                 semesters: [],
@@ -814,11 +855,19 @@
                 additionalRecommendations: ""
             };
             
-            // 尝试提取学期信息
-            const semesterRegex = /###\s*\*\*([^*]+)\*\*\s*([\s\S]*?)(?=###\s*\*\*|##\s*Additional|$)/g;
+            // 尝试直接解析课程列表格式
+            if (response.includes("Fall 2026") || response.includes("Spring 2026")) {
+                return parseSimpleFormat(response);
+            }
+            
+            // 尝试提取学期信息 - 支持多种格式
+            // 格式1: ### **Semester Name**
+            let semesterRegex = /###\s*\*\*([^*]+)\*\*\s*([\s\S]*?)(?=###\s*\*\*|##\s*Additional|##\s*Summary|$)/g;
             let semesterMatch;
+            let foundSemesters = false;
             
             while ((semesterMatch = semesterRegex.exec(response)) !== null) {
+                foundSemesters = true;
                 const semesterName = semesterMatch[1].trim();
                 const semesterContent = semesterMatch[2].trim();
                 
@@ -836,11 +885,29 @@
                     const descriptionMatch = semesterContent.match(descriptionRegex);
                     const description = descriptionMatch ? descriptionMatch[1].trim() : "";
                     
+                    // 提取学分信息 - 改进的学分提取
+                    let credits = 3; // 默认学分
+                    // 先尝试匹配 "X credits" 格式
+                    const creditsRegex = /-\s*(\d+)\s*credits/i;
+                    const creditsMatch = semesterContent.match(creditsRegex);
+                    if (creditsMatch) {
+                        credits = parseInt(creditsMatch[1]);
+                    } else {
+                        // 尝试匹配课程行中的学分信息
+                        const lineRegex = new RegExp(`\\*\\*${courseName.replace(/([.*+?^=!:${}()|[\]\/\\])/g, '\\$1')}\\*\\*(?:\\([^)]+\\))?.*?(\\d+)\\s*credits`, 'i');
+                        const lineMatch = semesterContent.match(lineRegex);
+                        if (lineMatch) {
+                            credits = parseInt(lineMatch[1]);
+                        } else {
+                            credits = estimateCredits(courseCode, courseName);
+                        }
+                    }
+                    
                     courses.push({
                         name: courseName,
                         code: courseCode,
                         description: description,
-                        credits: estimateCredits(courseCode, courseName)
+                        credits: credits
                     });
                 }
                 
@@ -852,6 +919,111 @@
                         totalCredits: courses.reduce((sum, course) => sum + course.credits, 0)
                     });
                 }
+            }
+            
+            // 如果没有找到学期信息，尝试其他格式
+            // 格式2: ## Spring 2025
+            if (!foundSemesters) {
+                semesterRegex = /##\s*([^#]+?)(?:\s*\(\d+\s*credits\))?\s*([\s\S]*?)(?=##|$)/g;
+                
+                while ((semesterMatch = semesterRegex.exec(response)) !== null) {
+                    const semesterName = semesterMatch[1].trim();
+                    const semesterContent = semesterMatch[2].trim();
+                    
+                    // 跳过非学期部分
+                    if (semesterName.toLowerCase().includes("summary") || 
+                        semesterName.toLowerCase().includes("additional") ||
+                        semesterName.toLowerCase().includes("recommendation")) {
+                        continue;
+                    }
+                    
+                    // 提取课程
+                    const courses = [];
+                    // 尝试匹配不同的课程格式
+                    const coursePatterns = [
+                        /\*\*([^*]+?)\*\*\s*\(([^)]+)\)\s*-\s*(\d+)\s*credits/g,  // **Course Name** (CODE) - 3 credits
+                        /(\d+)\.\s*([^(]+?)\s*\(([^)]+)\)\s*-\s*(\d+)\s*credits/g, // 1. Course Name (CODE) - 3 credits
+                        /\*\*([^*]+?)\*\*\s*\(([^)]+)\)/g,  // **Course Name** (CODE)
+                        /(\d+)\.\s*([^(]+?)\s*\(([^)]+)\)/g, // 1. Course Name (CODE)
+                        /(\d+)\.\s*([^(]+?)\s*-\s*(\d+)\s*credits/g, // 1. Course Name - 3 credits
+                        /([^(]+?)\s*\(([^)]+)\)\s*-\s*(\d+)\s*credits/g // Course Name (CODE) - 3 credits
+                    ];
+                    
+                    for (const pattern of coursePatterns) {
+                        let courseMatch;
+                        while ((courseMatch = pattern.exec(semesterContent)) !== null) {
+                            let courseName, courseCode, credits;
+                            
+                            if (pattern.toString().includes("credits")) {
+                                // 格式包含学分信息
+                                if (courseMatch.length === 4) {
+                                    // **Course Name** (CODE) - 3 credits
+                                    courseName = courseMatch[1].trim();
+                                    courseCode = courseMatch[2].trim();
+                                    credits = parseInt(courseMatch[3]);
+                                } else if (courseMatch.length === 5) {
+                                    // 1. Course Name (CODE) - 3 credits
+                                    courseName = courseMatch[2].trim();
+                                    courseCode = courseMatch[3].trim();
+                                    credits = parseInt(courseMatch[4]);
+                                } else if (courseMatch.length === 3 && !pattern.toString().includes("\\(")) {
+                                    // 1. Course Name - 3 credits (没有课程代码)
+                                    courseName = courseMatch[1].trim();
+                                    courseCode = "";
+                                    credits = parseInt(courseMatch[2]);
+                                } else {
+                                    // Course Name (CODE) - 3 credits
+                                    courseName = courseMatch[1].trim();
+                                    courseCode = courseMatch[2].trim();
+                                    credits = parseInt(courseMatch[3]);
+                                }
+                            } else {
+                                // 格式不包含学分信息
+                                if (courseMatch.length === 3) {
+                                    // **Course Name** (CODE)
+                                    courseName = courseMatch[1].trim();
+                                    courseCode = courseMatch[2].trim();
+                                } else {
+                                    // 1. Course Name (CODE)
+                                    courseName = courseMatch[2].trim();
+                                    courseCode = courseMatch[3].trim();
+                                }
+                                credits = estimateCredits(courseCode, courseName);
+                            }
+                            
+                            courses.push({
+                                name: courseName,
+                                code: courseCode,
+                                description: "",  // 描述可能不可用
+                                credits: credits
+                            });
+                        }
+                        
+                        // 如果找到了课程，不再尝试其他模式
+                        if (courses.length > 0) {
+                            break;
+                        }
+                    }
+                    
+                    result.semesters.push({
+                        name: semesterName,
+                        courses: courses,
+                        totalCredits: courses.reduce((sum, course) => sum + course.credits, 0)
+                    });
+                }
+            }
+            
+            // 如果仍然没有找到学期信息，创建一个默认学期
+            if (result.semesters.length === 0) {
+                // 尝试从文本中提取学期名称
+                const semesterNameMatch = response.match(/(?:Spring|Fall|Summer|Winter)\s+\d{4}/i);
+                const semesterName = semesterNameMatch ? semesterNameMatch[0] : "Spring 2025";
+                
+                result.semesters.push({
+                    name: semesterName,
+                    courses: [],
+                    totalCredits: 0
+                });
             }
             
             // 提取Additional Recommendations部分
@@ -874,6 +1046,111 @@
                 }
             }
             
+            console.log("解析结果:", result);
+            return result;
+        }
+        
+        // 简单格式解析函数
+        function parseSimpleFormat(response) {
+            console.log("使用简单格式解析");
+            
+            const result = {
+                semesters: [],
+                summary: "",
+                additionalRecommendations: ""
+            };
+            
+            // 提取学期名称
+            const semesterNames = [];
+            const semesterPattern = /(?:Spring|Fall|Summer|Winter)\s+\d{4}/g;
+            let match;
+            while ((match = semesterPattern.exec(response)) !== null) {
+                if (!semesterNames.includes(match[0])) {
+                    semesterNames.push(match[0]);
+                }
+            }
+            
+            console.log("找到的学期:", semesterNames);
+            
+            // 为每个学期创建一个对象
+            semesterNames.forEach(name => {
+                // 查找该学期的课程
+                const semesterSection = response.split(name)[1];
+                if (!semesterSection) return;
+                
+                // 查找下一个学期的位置
+                let endIndex = response.length;
+                for (const nextSemester of semesterNames) {
+                    if (nextSemester !== name && response.indexOf(nextSemester, response.indexOf(name)) > 0) {
+                        const nextIndex = response.indexOf(nextSemester, response.indexOf(name));
+                        if (nextIndex < endIndex) {
+                            endIndex = nextIndex;
+                        }
+                    }
+                }
+                
+                // 提取该学期的内容
+                const content = response.substring(response.indexOf(name), endIndex);
+                console.log(`${name} 内容:`, content.substring(0, 200) + "...");
+                
+                // 提取课程
+                const courses = [];
+                const coursePattern = /([A-Z]{2,4}\s*\d{3,4})[:\s-]+([^()\n]+)(?:\((\d+)\s*credits\))?/g;
+                let courseMatch;
+                
+                while ((courseMatch = coursePattern.exec(content)) !== null) {
+                    const code = courseMatch[1].trim();
+                    const courseName = courseMatch[2].trim();
+                    const credits = courseMatch[3] ? parseInt(courseMatch[3]) : 3;
+                    
+                    courses.push({
+                        name: courseName,
+                        code: code,
+                        description: "",
+                        credits: credits
+                    });
+                }
+                
+                // 如果没有找到课程，尝试其他模式
+                if (courses.length === 0) {
+                    // 尝试匹配 "Course Name (CODE) - 3 credits" 格式
+                    const altPattern = /([^(]+)\s*\(([A-Z]{2,4}\s*\d{3,4})\)\s*-\s*(\d+)\s*credits/g;
+                    while ((courseMatch = altPattern.exec(content)) !== null) {
+                        const courseName = courseMatch[1].trim();
+                        const code = courseMatch[2].trim();
+                        const credits = parseInt(courseMatch[3]);
+                        
+                        courses.push({
+                            name: courseName,
+                            code: code,
+                            description: "",
+                            credits: credits
+                        });
+                    }
+                }
+                
+                // 添加学期
+                result.semesters.push({
+                    name: name,
+                    courses: courses,
+                    totalCredits: courses.reduce((sum, course) => sum + course.credits, 0)
+                });
+            });
+            
+            // 提取总结
+            const summaryPattern = /Summary[:\s]+([\s\S]+?)(?=(?:Spring|Fall|Summer|Winter)\s+\d{4}|$)/i;
+            const summaryMatch = response.match(summaryPattern);
+            if (summaryMatch) {
+                result.summary = summaryMatch[1].trim();
+            } else {
+                // 使用最后一段作为总结
+                const paragraphs = response.split('\n\n');
+                if (paragraphs.length > 0) {
+                    result.summary = paragraphs[paragraphs.length - 1].trim();
+                }
+            }
+            
+            console.log("简单格式解析结果:", result);
             return result;
         }
 
@@ -995,10 +1272,16 @@
                             }
                         }
                     },
-                    onClick: (event, elements) => {
-                        if (elements.length > 0) {
+                    onClick: function(e, elements) {
+                        if (elements && elements.length > 0) {
                             const index = elements[0].index;
-                            showSemesterDetail(index);
+                            console.log("点击了图表条形:", index, labels[index]);
+                            
+                            // 只处理实际学期（不包括额外的两个条目）
+                            if (index < semesters.length) {
+                                // 显示对应学期的详细信息
+                                showSemesterDetail(index);
+                            }
                         }
                     }
                 }
@@ -1006,15 +1289,27 @@
             
             // 显示指定学期的详情
             function showSemesterDetail(index) {
+                console.log("显示学期详情:", index);
+                
                 // 隐藏所有学期详情
                 document.querySelectorAll('.course-detail').forEach(el => {
                     el.classList.remove('active');
+                    el.style.display = 'none';
                 });
                 
                 // 显示选中的学期详情
                 const selectedSemester = document.getElementById(`semester-${index}`);
                 if (selectedSemester) {
                     selectedSemester.classList.add('active');
+                    selectedSemester.style.display = 'block';
+                    
+                    // 更新当前学期显示
+                    const currentSemesterElement = document.getElementById('current-semester-display');
+                    if (currentSemesterElement) {
+                        const credits = semesters[index].totalCredits && semesters[index].totalCredits > 0 ? 
+                            semesters[index].totalCredits : 15;
+                        currentSemesterElement.textContent = `${semesters[index].name} (${credits} credits)`;
+                    }
                 }
             }
         }
@@ -1023,16 +1318,44 @@
         function renderSemesters(semesters) {
             console.log("渲染学期详情:", semesters);
             
-            // 生成学期详情HTML
-            const semestersHTML = generateSemesterDetailsHTML(semesters);
+            // 如果没有学期或学期为空，创建一个默认学期
+            if (!semesters || semesters.length === 0) {
+                console.log("没有找到学期，创建默认学期");
+                semesters = [{
+                    name: "Spring 2025 (Current Semester)",
+                    courses: [
+                        { name: "Foundations of Machine Learning", code: "CSCI-GA 2565", credits: 3 },
+                        { name: "Big Data", code: "CSCI-GA 3033", credits: 4 },
+                        { name: "Computer Vision", code: "CSCI-GA 2271", credits: 3 }
+                    ],
+                    totalCredits: 10
+                }];
+            }
             
-            // 更新DOM
+            // 生成学期详情HTML
+            const semesterDetailsHTML = generateSemesterDetailsHTML(semesters);
+            
+            // 更新学期详情容器
             const semesterDetailsContainer = document.getElementById('semester-details');
             if (semesterDetailsContainer) {
-                semesterDetailsContainer.innerHTML = semestersHTML;
+                semesterDetailsContainer.innerHTML = semesterDetailsHTML;
+                
+                // 确保只有第一个学期详情可见
+                document.querySelectorAll('.course-detail').forEach((el, index) => {
+                    if (index === 0) {
+                        el.classList.add('active');
+                        el.style.display = 'block';
+                    } else {
+                        el.classList.remove('active');
+                        el.style.display = 'none';
+                    }
+                });
             } else {
                 console.error("找不到semester-details容器");
             }
+            
+            // 初始化学期图表
+            initSemesterChart(semesters);
             
             // 更新学期选择器
             const semesterSelector = document.getElementById('semester-selector');
@@ -1043,7 +1366,19 @@
                     const button = document.createElement('button');
                     button.className = `px-4 py-2 text-sm font-medium ${index === 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'} rounded-md hover:bg-blue-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500`;
                     button.textContent = semester.name;
-                    button.onclick = () => showSemesterDetail(index);
+                    button.onclick = function() {
+                        // 更新按钮样式
+                        document.querySelectorAll('#semester-selector button').forEach((btn, i) => {
+                            if (i === index) {
+                                btn.className = 'px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500';
+                            } else {
+                                btn.className = 'px-4 py-2 text-sm font-medium bg-gray-200 text-gray-700 rounded-md hover:bg-blue-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500';
+                            }
+                        });
+                        
+                        // 显示对应学期详情
+                        showSemesterDetail(index);
+                    };
                     
                     semesterSelector.appendChild(button);
                 });
@@ -1059,31 +1394,31 @@
                     semesters[0].totalCredits : 15;
                 currentSemesterElement.textContent = `${semesters[0].name} (${credits} credits)`;
             }
-        }
-
-        // 显示特定学期详情
-        function showSemesterDetail(index) {
-            // 隐藏所有学期详情
-            document.querySelectorAll('.course-detail').forEach(el => {
-                el.classList.remove('active');
-            });
             
-            // 显示选中的学期详情
-            const selectedSemester = document.getElementById(`semester-${index}`);
-            if (selectedSemester) {
-                selectedSemester.classList.add('active');
-            }
-            
-            // 更新按钮样式
-            document.querySelectorAll('#semester-selector button').forEach((button, i) => {
-                if (i === index) {
-                    button.classList.remove('bg-gray-200', 'text-gray-700');
-                    button.classList.add('bg-blue-600', 'text-white');
-                } else {
-                    button.classList.remove('bg-blue-600', 'text-white');
-                    button.classList.add('bg-gray-200', 'text-gray-700');
+            // 显示指定学期的详情
+            function showSemesterDetail(index) {
+                console.log("显示学期详情:", index);
+                
+                // 隐藏所有学期详情
+                document.querySelectorAll('.course-detail').forEach(el => {
+                    el.classList.remove('active');
+                    el.style.display = 'none';
+                });
+                
+                // 显示选中的学期详情
+                const selectedSemester = document.getElementById(`semester-${index}`);
+                if (selectedSemester) {
+                    selectedSemester.classList.add('active');
+                    selectedSemester.style.display = 'block';
+                    
+                    // 更新当前学期显示
+                    if (currentSemesterElement) {
+                        const credits = semesters[index].totalCredits && semesters[index].totalCredits > 0 ? 
+                            semesters[index].totalCredits : 15;
+                        currentSemesterElement.textContent = `${semesters[index].name} (${credits} credits)`;
+                    }
                 }
-            });
+            }
         }
 
         // 生成课程计划
@@ -1131,8 +1466,55 @@
                 document.getElementById('loading-indicator').classList.add('hidden');
                 document.getElementById('course-plan-container').classList.remove('hidden');
                 
+                // 在控制台输出完整的API响应
+                console.log("完整API响应:", JSON.stringify(data));
+                
+                // 直接显示原始响应内容（用于调试）
+                const rawResponseDiv = document.createElement('div');
+                rawResponseDiv.id = 'raw-response';
+                rawResponseDiv.style.display = 'none';
+                rawResponseDiv.style.whiteSpace = 'pre-wrap';
+                rawResponseDiv.style.overflow = 'auto';
+                rawResponseDiv.style.maxHeight = '300px';
+                rawResponseDiv.style.border = '1px solid #ccc';
+                rawResponseDiv.style.padding = '10px';
+                rawResponseDiv.style.marginBottom = '20px';
+                rawResponseDiv.style.backgroundColor = '#f5f5f5';
+                rawResponseDiv.textContent = data.response || data.error;
+                
+                // 添加一个切换按钮
+                const toggleButton = document.createElement('button');
+                toggleButton.textContent = '显示/隐藏原始响应';
+                toggleButton.className = 'bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-300 mb-4';
+                toggleButton.onclick = function() {
+                    const rawResponse = document.getElementById('raw-response');
+                    if (rawResponse.style.display === 'none') {
+                        rawResponse.style.display = 'block';
+                        this.textContent = '隐藏原始响应';
+                    } else {
+                        rawResponse.style.display = 'none';
+                        this.textContent = '显示原始响应';
+                    }
+                };
+                
+                // 将按钮和原始响应添加到页面
+                const container = document.getElementById('course-plan-container');
+                if (container.querySelector('#raw-response')) {
+                    container.removeChild(container.querySelector('#raw-response'));
+                }
+                if (container.querySelector('#toggle-raw-response')) {
+                    container.removeChild(container.querySelector('#toggle-raw-response'));
+                }
+                
+                toggleButton.id = 'toggle-raw-response';
+                container.insertBefore(toggleButton, container.firstChild);
+                container.insertBefore(rawResponseDiv, container.firstChild.nextSibling);
+                
                 // 解析AI响应
                 const planData = parseAIResponse(data.response || data.error);
+                
+                // 在控制台输出解析后的数据
+                console.log("解析后的计划数据:", JSON.stringify(planData));
                 
                 // 渲染学期课程
                 renderSemesters(planData.semesters);
@@ -1156,7 +1538,11 @@
         function renderCreditHoursChart(semesters) {
             // 准备图表数据
             const labels = semesters.map(semester => semester.name);
-            const creditData = semesters.map(semester => semester.totalCredits || 15); // 默认为15学分
+            const creditData = semesters.map(semester => {
+                // 确保学分值有效，如果无效则使用默认值
+                const credits = semester.totalCredits;
+                return (credits && credits > 0) ? credits : 15; // 默认为15学分
+            });
             
             // 添加额外的两个条目
             labels.push('计划背景说明');
@@ -1205,9 +1591,47 @@
                                 text: '学期'
                             }
                         }
+                    },
+                    onClick: function(e, elements) {
+                        if (elements && elements.length > 0) {
+                            const index = elements[0].index;
+                            console.log("点击了图表条形:", index, labels[index]);
+                            
+                            // 只处理实际学期（不包括额外的两个条目）
+                            if (index < semesters.length) {
+                                // 显示对应学期的详细信息
+                                showSemesterDetail(index);
+                            }
+                        }
                     }
                 }
             });
+            
+            // 显示指定学期的详情
+            function showSemesterDetail(index) {
+                console.log("显示学期详情:", index);
+                
+                // 隐藏所有学期详情
+                document.querySelectorAll('.course-detail').forEach(el => {
+                    el.classList.remove('active');
+                    el.style.display = 'none';
+                });
+                
+                // 显示选中的学期详情
+                const selectedSemester = document.getElementById(`semester-${index}`);
+                if (selectedSemester) {
+                    selectedSemester.classList.add('active');
+                    selectedSemester.style.display = 'block';
+                    
+                    // 更新当前学期显示
+                    const currentSemesterElement = document.getElementById('current-semester-display');
+                    if (currentSemesterElement) {
+                        const credits = semesters[index].totalCredits && semesters[index].totalCredits > 0 ? 
+                            semesters[index].totalCredits : 15;
+                        currentSemesterElement.textContent = `${semesters[index].name} (${credits} credits)`;
+                    }
+                }
+            }
         }
 
         // 添加生成课程计划按钮的点击事件
