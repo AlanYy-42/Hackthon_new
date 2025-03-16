@@ -370,85 +370,103 @@ Please provide more details about your academic background and goals so I can gi
         # Select program courses or default to Computer Science
         program_courses = courses.get(program, courses["Computer Science"])
         
-        # Select courses based on interests and career
+        # 简化课程选择逻辑，减少处理时间
         selected_courses = []
+        
+        # 根据兴趣和职业目标选择课程
         for course in program_courses:
-            course_name_lower = course["name"].lower()
-            if any(interest.lower() in course_name_lower for interest in interests.split(", ")):
-                selected_courses.append(course)
+            if len(selected_courses) < 6:  # 限制课程数量
+                # 简单匹配逻辑
+                if any(keyword in course["name"].lower() for keyword in interests.lower().split(", ")):
+                    selected_courses.append(course)
+                elif any(keyword in course["name"].lower() for keyword in career.lower().split()):
+                    selected_courses.append(course)
         
-        # If we couldn't match interests, just take the first 4 courses
-        if len(selected_courses) < 2:
-            selected_courses = program_courses[:4]
-        else:
-            selected_courses = selected_courses[:4]  # Limit to 4 courses
+        # 如果选择的课程不足，添加剩余的课程
+        while len(selected_courses) < 6 and len(program_courses) > len(selected_courses):
+            for course in program_courses:
+                if course not in selected_courses:
+                    selected_courses.append(course)
+                    break
+                if len(selected_courses) >= 6:
+                    break
         
-        # Generate the response
+        # 确保从Fall 2025开始
+        semesters = ["Fall 2025", "Spring 2026", "Fall 2026"]
+        
+        # 构建响应
         response = f"""# Personalized Course Plan for {program}
 
-Based on your information (Semester: {semester}, Career Goal: {career}, Interests: {interests}), here's a customized course plan:
-
-## Recommended Courses
+Based on your interests in {interests} and career goal as a {career}, here's a customized course plan:
 
 """
         
-        # Add course details
-        for i, course in enumerate(selected_courses, 1):
-            response += f"{i}. **{course['name']}** ({course['code']}) - {course['credits']} credits\n"
+        # 为每个学期添加课程
+        for i, sem in enumerate(semesters):
+            response += f"""### **{sem}**
+
+"""
+            # 每个学期分配2门课程
+            start_idx = i * 2
+            end_idx = min(start_idx + 2, len(selected_courses))
             
-            # Add course description based on name
-            if "data" in course["name"].lower():
-                response += "   - Learn fundamental data structures and algorithm design principles\n\n"
-            elif "software" in course["name"].lower():
-                response += "   - Master software development lifecycle and project management skills\n\n"
-            elif "web" in course["name"].lower():
-                response += "   - Develop skills in frontend and backend web technologies\n\n"
-            elif "ai" in course["name"].lower() or "machine" in course["name"].lower():
-                response += "   - Explore artificial intelligence concepts and applications\n\n"
-            elif "database" in course["name"].lower():
-                response += "   - Learn database design, SQL, and data management principles\n\n"
-            elif "network" in course["name"].lower():
-                response += "   - Understand computer networking protocols and architecture\n\n"
-            elif "management" in course["name"].lower():
-                response += "   - Develop fundamental management and leadership skills\n\n"
-            elif "accounting" in course["name"].lower():
-                response += "   - Master financial accounting principles and practices\n\n"
-            elif "marketing" in course["name"].lower():
-                response += "   - Learn key marketing strategies and consumer behavior analysis\n\n"
-            elif "analytics" in course["name"].lower():
-                response += "   - Develop data analysis skills for business decision-making\n\n"
-            elif "mathematics" in course["name"].lower():
-                response += "   - Build strong mathematical foundations for engineering applications\n\n"
-            elif "mechanics" in course["name"].lower():
-                response += "   - Study the behavior of materials under various loading conditions\n\n"
-            elif "thermodynamics" in course["name"].lower():
-                response += "   - Understand energy transfer and conversion principles\n\n"
-            elif "control" in course["name"].lower():
-                response += "   - Learn to design and analyze control systems\n\n"
-            elif "design" in course["name"].lower():
-                response += "   - Apply engineering principles to practical design challenges\n\n"
-            else:
-                response += "   - Essential course for your program and career goals\n\n"
+            for j in range(start_idx, end_idx):
+                course = selected_courses[j]
+                response += f"{j-start_idx+1}. **{course['name']}** ({course['code']}) - {course['credits']} credits\n"
+                
+                # 根据课程名称添加描述
+                if "data" in course["name"].lower():
+                    response += "   - Learn fundamental data structures and algorithm design principles\n\n"
+                elif "software" in course["name"].lower():
+                    response += "   - Master software development lifecycle and project management skills\n\n"
+                elif "web" in course["name"].lower():
+                    response += "   - Develop skills in frontend and backend web technologies\n\n"
+                elif "ai" in course["name"].lower() or "machine" in course["name"].lower():
+                    response += "   - Explore artificial intelligence concepts and applications\n\n"
+                elif "database" in course["name"].lower():
+                    response += "   - Learn database design, SQL, and data management principles\n\n"
+                elif "network" in course["name"].lower():
+                    response += "   - Understand computer networking protocols and architecture\n\n"
+                elif "management" in course["name"].lower():
+                    response += "   - Develop fundamental management and leadership skills\n\n"
+                elif "accounting" in course["name"].lower():
+                    response += "   - Master financial accounting principles and practices\n\n"
+                elif "marketing" in course["name"].lower():
+                    response += "   - Learn key marketing strategies and consumer behavior analysis\n\n"
+                elif "analytics" in course["name"].lower():
+                    response += "   - Develop data analysis skills for business decision-making\n\n"
+                elif "mathematics" in course["name"].lower():
+                    response += "   - Build strong mathematical foundations for engineering applications\n\n"
+                elif "mechanics" in course["name"].lower():
+                    response += "   - Study the behavior of materials under various loading conditions\n\n"
+                elif "thermodynamics" in course["name"].lower():
+                    response += "   - Understand energy transfer and conversion principles\n\n"
+                elif "control" in course["name"].lower():
+                    response += "   - Learn to design and analyze control systems\n\n"
+                elif "design" in course["name"].lower():
+                    response += "   - Apply engineering principles to practical design challenges\n\n"
+                else:
+                    response += "   - Essential course for your program and career goals\n\n"
         
-        # Add learning path
-        response += f"""## Learning Path
+        # 添加额外建议
+        response += """## Additional Recommendations (12 credits)
 
-{semester}:
-- {selected_courses[0]['name']}
-- {selected_courses[1]['name']}
+### Internships: - 3 credits
+Apply for summer internships in 2026 (after Spring 2026) to gain real-world experience. Look for roles in ML engineering, data science, or AI research.
 
-Next semester:
-- {selected_courses[2]['name'] if len(selected_courses) > 2 else 'Elective course based on performance'}
-- {selected_courses[3]['name'] if len(selected_courses) > 3 else 'Elective course based on interests'}
+### Certifications: - 3 credits
+Consider certifications like **Google Cloud Professional Machine Learning Engineer** or **AWS Certified Machine Learning Specialty** to enhance your resume.
 
-## Career Advice
+### Extracurriculars: - 3 credits
+Join ML/AI clubs or participate in Kaggle competitions to build practical skills and network with peers.
 
-As a future {career}, I recommend:
-1. Participate in projects that demonstrate your skills in {interests}
-2. Build a portfolio showcasing your work in {selected_courses[0]['name']} and {selected_courses[1]['name']}
-3. Look for internship opportunities related to {career}
+### Research Opportunities: - 3 credits
+Reach out to professors in Spring 2026 to explore research opportunities in ML or AI.
 
-Good luck with your studies in {program}!"""
+## Summary
+
+This plan balances theory and practice, ensuring you graduate with the skills and experience needed to excel as a Machine Learning Engineer. Let me know if you'd like further adjustments! 🚀
+"""
         
         return response
     
