@@ -102,17 +102,14 @@
                 <form id="course-planning-form" class="space-y-6">
                     <!-- Step 1: Program Information -->
                     <div id="step-1" class="step-content">
-                        <div>
-                            <label class="block text-sm font-medium text-blue-900 mb-2">
-                                Program Information (URL)
-                            </label>
-                            <input 
-                                type="text" 
-                                id="program-url" 
-                                class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                                placeholder="Enter university program URL"
-                                required
-                            >
+                        <div class="flex flex-col md:flex-row gap-4 mt-4">
+                            <input type="text" id="program-url" placeholder="输入课程网页URL" class="flex-grow px-4 py-2 border rounded-lg">
+                            <button id="crawl-btn" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                                爬取课程信息
+                            </button>
+                            <button id="vision-crawl-btn" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+                                计算机视觉爬取
+                            </button>
                         </div>
                         
                         <div class="flex justify-end mt-4">
@@ -1216,6 +1213,71 @@
         // 添加生成课程计划按钮的点击事件
         document.getElementById('generate-plan-btn').addEventListener('click', function() {
             generateCoursePlan();
+        });
+
+        // 添加计算机视觉爬虫功能
+        document.getElementById('vision-crawl-btn').addEventListener('click', function() {
+            const url = document.getElementById('program-url').value;
+            if (!url) {
+                alert('请输入URL');
+                return;
+            }
+            
+            // 显示加载状态
+            const resultDiv = document.getElementById('crawl-result');
+            resultDiv.innerHTML = '<div class="text-center py-10"><div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div><p class="mt-4 text-gray-600">使用计算机视觉和OCR技术爬取中，这可能需要一些时间...</p></div>';
+            
+            // 调用计算机视觉爬虫API
+            fetch('/api/vision-crawler', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ url: url }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                // 显示结果
+                let html = '<div class="bg-white p-6 rounded-lg shadow-lg">';
+                
+                // 添加标题和描述
+                html += `<h3 class="text-xl font-bold mb-4">${data.title || '未找到标题'}</h3>`;
+                html += `<p class="mb-4">${data.description || '未找到描述'}</p>`;
+                
+                // 添加课程列表
+                if (data.courses && data.courses.length > 0) {
+                    html += '<div class="mb-4"><h4 class="font-bold mb-2">课程:</h4><ul class="list-disc pl-5">';
+                    data.courses.forEach(course => {
+                        html += `<li>${course}</li>`;
+                    });
+                    html += '</ul></div>';
+                }
+                
+                // 添加学分信息
+                if (data.credits) {
+                    html += `<div class="mb-4"><h4 class="font-bold mb-2">学分要求:</h4><p>${data.credits}</p></div>`;
+                }
+                
+                // 添加计算机视觉分析信息
+                if (data.vision_analysis) {
+                    html += '<div class="mb-4 p-3 bg-gray-100 rounded"><h4 class="font-bold mb-2">计算机视觉分析:</h4>';
+                    html += `<p>检测到的标题区域: ${data.vision_analysis.title_regions_found}</p>`;
+                    html += `<p>检测到的列表元素: ${data.vision_analysis.list_elements_found}</p>`;
+                    html += `<p>OCR提取文本长度: ${data.vision_analysis.ocr_text_length}</p>`;
+                    html += '</div>';
+                }
+                
+                // 如果有错误，显示错误信息
+                if (data.error) {
+                    html += `<div class="p-3 bg-red-100 text-red-700 rounded mb-4">错误: ${data.error}</div>`;
+                }
+                
+                html += '</div>';
+                resultDiv.innerHTML = html;
+            })
+            .catch(error => {
+                resultDiv.innerHTML = `<div class="bg-red-100 text-red-700 p-4 rounded-lg">爬取失败: ${error.message}</div>`;
+            });
         });
 
         // 添加测试按钮
