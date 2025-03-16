@@ -13,9 +13,11 @@ time.sleep(1)
 
 # Safely get API key from environment variables
 # 尝试多种可能的环境变量名称
-API_KEY = os.getenv('API') or os.getenv('DEEPSEEK_API_KEY') or os.getenv('DEEPSEEK_API')
+API_KEY = os.getenv('API') or os.getenv('DEEPSEEK_API_KEY') or os.getenv('DEEPSEEK_API') or "sk-1ac9d3bd7e5445b18ee41d1aa60344b7"
 
+# 调试信息
 print("API key loaded:", bool(API_KEY))  # Only print if exists, not the actual value
+print("Environment variables:", list(os.environ.keys()))  # 打印所有环境变量名称（不打印值）
 
 # DeepSeek API configuration
 DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
