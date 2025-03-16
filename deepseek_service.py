@@ -22,33 +22,35 @@ class ChatService:
         if not GOOGLE_API_KEY:
             print("Warning: GOOGLE_API_KEY not found in environment variables")
             self.model = None
+            self.chat_session = None
         else:
             try:
                 # 列出可用模型
                 print("Available models:", [m.name for m in genai.list_models()])
                 
-                # 使用text-bison-001模型
-                self.model = genai.GenerativeModel('gemini-1.0-pro')
+                # 使用gemini-pro模型
+                self.model = genai.GenerativeModel('gemini-pro')
                 
                 # 初始化对话
-                self.chat = self.model.start_chat(history=[])
+                self.chat_session = self.model.start_chat(history=[])
                 print("Chat initialized successfully")
                 
                 # 发送系统提示词
-                response = self.chat.send_message(SYSTEM_PROMPT)
-                print("System prompt sent:", response.text)
+                response = self.chat_session.send_message(SYSTEM_PROMPT)
+                print("System prompt sent:", response.text if response else "No response")
                 
             except Exception as e:
                 print(f"Error initializing chat service: {str(e)}")
                 self.model = None
+                self.chat_session = None
     
-    def chat(self, message):
-        if not self.model:
+    def send_message(self, message):
+        if not self.model or not self.chat_session:
             return "API密钥未配置或初始化失败，请联系管理员。"
             
         try:
             # 发送用户消息并获取响应
-            response = self.chat.send_message(message)
+            response = self.chat_session.send_message(message)
             
             if response and response.text:
                 return response.text

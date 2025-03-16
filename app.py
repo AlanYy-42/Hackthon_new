@@ -101,7 +101,7 @@ def chat():
     message = data['message']
     print(f"Processing message: {message}")  # 调试日志
     
-    response = chat_service.chat(message)
+    response = chat_service.send_message(message)
     print(f"API response: {response}")  # 调试日志
     
     if response is None:
