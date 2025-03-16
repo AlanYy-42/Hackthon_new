@@ -16,6 +16,7 @@ load_dotenv()
 # Print environment variables (without actual values) for debugging
 print("Environment variables loaded:")
 print("API exists:", "API" in os.environ)
+print("All environment variables:", list(os.environ.keys()))  # 打印所有环境变量名称（不打印值）
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -92,20 +93,14 @@ def crawl_program():
     
     url = data['url']
     
-    # 检查API密钥是否可用
-    if not os.getenv('API'):
-        return jsonify({
-            "error": "API key not configured",
-            "title": "Sample Program",
-            "description": "This is a sample program description since we couldn't access the actual URL due to API key configuration issues.",
-            "courses": ["Sample Course 1", "Sample Course 2", "Sample Course 3"],
-            "credits": "120 credits required"
-        })
-    
+    # 不再检查API密钥，直接尝试爬取
     try:
+        print(f"尝试爬取URL: {url}")
         # Fetch the webpage content
         response = requests.get(url, timeout=10)
         response.raise_for_status()  # Raise an exception for 4XX/5XX responses
+        
+        print(f"成功获取网页内容，长度: {len(response.text)}")
         
         # Parse the HTML content
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -123,11 +118,13 @@ def crawl_program():
         title_tags = soup.find_all(['h1', 'h2'])
         if title_tags:
             program_info["title"] = title_tags[0].get_text().strip()
+            print(f"找到标题: {program_info['title']}")
         
         # Try to find program description (usually in p tags near the title)
         desc_tags = soup.find_all('p', limit=5)
         if desc_tags:
             program_info["description"] = " ".join([p.get_text().strip() for p in desc_tags[:2]])
+            print(f"找到描述: {program_info['description'][:100]}...")
         
         # Look for course information
         # This is a simplified approach - actual implementation would need to be tailored to specific websites
@@ -136,16 +133,20 @@ def crawl_program():
             course_text = element.get_text().strip()
             program_info["courses"].append(course_text)
         
+        print(f"找到课程数量: {len(program_info['courses'])}")
+        
         # Look for credit requirements
         credit_elements = soup.find_all(string=re.compile(r'credits|credit hours', re.IGNORECASE))
         if credit_elements:
             for element in credit_elements:
                 if re.search(r'\d+\s*credits|\d+\s*credit hours', element, re.IGNORECASE):
                     program_info["credits"] = element.strip()
+                    print(f"找到学分要求: {program_info['credits']}")
                     break
         
         # If we couldn't find specific information, provide a general summary
         if not program_info["courses"]:
+            print("未找到课程信息，使用默认数据")
             # 如果无法提取课程信息，返回一些示例数据
             program_info["courses"] = [
                 "Introduction to Computer Science - CS101",
