@@ -35,64 +35,76 @@ SYSTEM_PROMPT = """你是一个专业的教育顾问助手，专门帮助学生�
 
 class ChatService:
     def __init__(self):
-        if not GOOGLE_API_KEY:
-            print("Warning: GOOGLE_API_KEY not found in environment variables")
-            self.model = None
-            self.chat_session = None
-        else:
+        # Load environment variables
+        load_dotenv()
+        
+        # Get API key
+        self.api_key = os.getenv('GOOGLE_API_KEY')
+        self.api_key_loaded = self.api_key is not None
+        print(f"GOOGLE_API_KEY loaded: {self.api_key_loaded}")
+        
+        # Initialize chat session
+        self.chat_session = None
+        
+        if self.api_key_loaded:
             try:
                 print("Initializing chat service with API key...")
-                # 列出可用模型
-                try:
-                    models = genai.list_models()
-                    print("Available models:", [m.name for m in models])
-                except Exception as e:
-                    print(f"Error listing models: {str(e)}")
+                genai.configure(api_key=self.api_key)
                 
-                # 使用gemini-pro模型
+                # List available models
+                models = genai.list_models()
+                model_names = [model.name for model in models]
+                print(f"Available models: {model_names}")
+                
+                # Create a generative model instance
                 print("Creating GenerativeModel instance...")
-                self.model = genai.GenerativeModel('gemini-pro')
+                self.model = genai.GenerativeModel(model_name="gemini-pro")
                 
-                # 初始化对话
+                # Start a chat session
                 print("Starting chat session...")
                 self.chat_session = self.model.start_chat(history=[])
                 print("Chat initialized successfully")
                 
-                # 发送系统提示词
+                # Send system prompt
                 print("Sending system prompt...")
-                response = self.chat_session.send_message(SYSTEM_PROMPT)
-                print("System prompt sent:", response.text if response else "No response")
+                system_prompt = """You are StudyPath AI, an academic planning assistant. 
+                Your goal is to help students plan their academic journey, recommend courses, 
+                and provide guidance on career paths. Be helpful, informative, and supportive."""
+                
+                self.chat_session.send_message(system_prompt)
                 
             except Exception as e:
                 print(f"Error initializing chat service: {str(e)}")
-                self.model = None
                 self.chat_session = None
+        else:
+            print("Warning: GOOGLE_API_KEY not found in environment variables")
     
     def send_message(self, message):
-        if not self.model or not self.chat_session:
-            print("Error: model or chat_session is None")
-            print("model exists:", bool(self.model))
-            print("chat_session exists:", bool(self.chat_session))
-            return "API密钥未配置或初始化失败，请联系管理员。"
-            
+        if not self.api_key_loaded:
+            return "API密钥未配置。请联系管理员设置Google API密钥。"
+        
+        if self.chat_session is None:
+            try:
+                # Try to reinitialize the chat session
+                self.model = genai.GenerativeModel(model_name="models/gemini-1.5-pro")
+                self.chat_session = self.model.start_chat(history=[])
+            except Exception as e:
+                return f"聊天服务初始化失败: {str(e)}"
+        
         try:
-            print(f"Sending message: {message}")
-            # 发送用户消息并获取响应
             response = self.chat_session.send_message(message)
-            print("Response received")
-            
-            if response and response.text:
-                print("Response text:", response.text[:100] + "..." if len(response.text) > 100 else response.text)
-                return response.text
-            else:
-                print("No valid response received")
-                return "抱歉，未能获取到有效回复。"
-            
+            return response.text
         except Exception as e:
-            print(f"Error calling Gemini API: {str(e)}")
-            return f"抱歉，调用API时出现错误：{str(e)}"
+            # If error occurs, try with a different model
+            try:
+                # Try with a different model
+                self.model = genai.GenerativeModel(model_name="models/gemini-1.5-flash")
+                self.chat_session = self.model.start_chat(history=[])
+                response = self.chat_session.send_message(message)
+                return response.text
+            except Exception as e2:
+                return f"发送消息时出错: {str(e2)}"
 
-# 创建单例实例
-print("Creating ChatService instance...")
+# Create a singleton instance
 chat_service = ChatService()
 print("ChatService instance created") 
