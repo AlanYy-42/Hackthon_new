@@ -9,7 +9,6 @@ GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 
 # 配置Gemini
 genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel('gemini-pro')
 
 SYSTEM_PROMPT = """你是一个专业的教育顾问助手，专门帮助学生规划他们的学习路径和课程选择。你应该：
 1. 基于学生已修课程和兴趣提供个性化建议
@@ -24,15 +23,28 @@ class ChatService:
             print("Warning: GOOGLE_API_KEY not found in environment variables")
             self.model = None
         else:
-            self.model = model
-            # 初始化聊天
-            self.chat = model.start_chat(history=[])
-            # 发送系统提示词
-            self.chat.send_message(SYSTEM_PROMPT)
+            try:
+                # 列出可用模型
+                print("Available models:", [m.name for m in genai.list_models()])
+                
+                # 使用text-bison-001模型
+                self.model = genai.GenerativeModel('gemini-1.0-pro')
+                
+                # 初始化对话
+                self.chat = self.model.start_chat(history=[])
+                print("Chat initialized successfully")
+                
+                # 发送系统提示词
+                response = self.chat.send_message(SYSTEM_PROMPT)
+                print("System prompt sent:", response.text)
+                
+            except Exception as e:
+                print(f"Error initializing chat service: {str(e)}")
+                self.model = None
     
     def chat(self, message):
         if not self.model:
-            return "API密钥未配置，请联系管理员设置Google API密钥。"
+            return "API密钥未配置或初始化失败，请联系管理员。"
             
         try:
             # 发送用户消息并获取响应
