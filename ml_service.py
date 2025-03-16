@@ -20,7 +20,10 @@ class CourseRecommender:
         self.data_path = os.path.join(os.path.dirname(__file__), 'models', 'training_data.pkl')
         self.courses_path = os.path.join(os.path.dirname(__file__), 'models', 'courses.pkl')
         self.prereqs_path = os.path.join(os.path.dirname(__file__), 'models', 'prerequisites.pkl')
-        self.db_path = os.path.join(os.path.dirname(__file__), '..', 'instance', 'studypath.db')
+        
+        # 使用与 app.py 相同的数据库路径
+        basedir = os.path.abspath(os.path.dirname(__file__))
+        self.db_path = os.path.join(basedir, "instance", "studypath.db")
         
         # Create models directory if it doesn't exist
         os.makedirs(os.path.dirname(self.model_path), exist_ok=True)

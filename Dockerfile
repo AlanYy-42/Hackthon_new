@@ -12,10 +12,9 @@ RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # 5️⃣ 创建必要目录并赋予权限
-RUN mkdir -p /app/models && chmod -R 777 /app/models && \
-    mkdir -p /app/instance && chmod -R 777 /app/instance && \
-    mkdir -p /tmp/mpl_config && chmod -R 777 /tmp/mpl_config && \
-    mkdir -p /app/visualizations && chmod -R 777 /app/visualizations
+RUN mkdir -p /app/models /app/instance /tmp/mpl_config /app/visualizations && \
+    chmod -R 755 /app/models /app/instance /tmp/mpl_config /app/visualizations && \
+    touch /app/instance/studypath.db && chmod 666 /app/instance/studypath.db
 
 # 6️⃣ 设置 Matplotlib 缓存路径，避免权限问题
 ENV MPLCONFIGDIR=/tmp/mpl_config
