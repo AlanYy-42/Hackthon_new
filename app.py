@@ -4,6 +4,10 @@ from dotenv import load_dotenv
 from models import db, Course, Student, Enrollment
 from ml_service import recommender
 from deepseek_service import chat_service
+import requests
+from bs4 import BeautifulSoup
+import re
+import json
 
 # Load environment variables at the start
 load_dotenv()
@@ -32,6 +36,85 @@ def health_check():
 def get_courses():
     courses = Course.query.all()
     return jsonify([course.to_dict() for course in courses])
+
+@app.route('/api/crawl-program', methods=['POST'])
+def crawl_program():
+    data = request.json
+    if not data or 'url' not in data:
+        return jsonify({"error": "URL is required"}), 400
+    
+    url = data['url']
+    
+    try:
+        # Fetch the webpage content
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()  # Raise an exception for 4XX/5XX responses
+        
+        # Parse the HTML content
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Extract program information
+        program_info = {
+            "title": "",
+            "description": "",
+            "courses": [],
+            "requirements": [],
+            "credits": ""
+        }
+        
+        # Try to find program title (usually in h1 or h2 tags)
+        title_tags = soup.find_all(['h1', 'h2'])
+        if title_tags:
+            program_info["title"] = title_tags[0].get_text().strip()
+        
+        # Try to find program description (usually in p tags near the title)
+        desc_tags = soup.find_all('p', limit=5)
+        if desc_tags:
+            program_info["description"] = " ".join([p.get_text().strip() for p in desc_tags[:2]])
+        
+        # Look for course information
+        # This is a simplified approach - actual implementation would need to be tailored to specific websites
+        course_elements = soup.find_all(['li', 'div'], string=re.compile(r'[A-Z]{2,4}\s*\d{3,4}'))
+        for element in course_elements[:10]:  # Limit to first 10 courses found
+            course_text = element.get_text().strip()
+            program_info["courses"].append(course_text)
+        
+        # Look for credit requirements
+        credit_elements = soup.find_all(string=re.compile(r'credits|credit hours', re.IGNORECASE))
+        if credit_elements:
+            for element in credit_elements:
+                if re.search(r'\d+\s*credits|\d+\s*credit hours', element, re.IGNORECASE):
+                    program_info["credits"] = element.strip()
+                    break
+        
+        # If we couldn't find specific information, provide a general summary
+        if not program_info["courses"]:
+            # Extract all text from the page
+            all_text = soup.get_text()
+            
+            # Use Gemini to summarize the program information
+            prompt = f"""
+            Please extract and summarize the key information about this academic program from the following webpage text.
+            Focus on:
+            1. Program name/title
+            2. Required courses
+            3. Credit requirements
+            4. Program structure
+            
+            Webpage text:
+            {all_text[:5000]}  # Limit text length to avoid token limits
+            """
+            
+            response = chat_service.send_message(prompt)
+            if response:
+                program_info["ai_summary"] = response
+        
+        return jsonify(program_info)
+        
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": f"Failed to fetch URL: {str(e)}"}), 500
+    except Exception as e:
+        return jsonify({"error": f"Error processing webpage: {str(e)}"}), 500
 
 @app.route('/api/recommendations', methods=['POST'])
 def get_recommendations():
