@@ -1,11 +1,19 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 
 export default function Home() {
+  const [searchQuery, setSearchQuery] = useState('')
+  
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    // 处理搜索逻辑
+    console.log('Search query:', searchQuery)
+  }
+  
   return (
     <main className="flex min-h-screen flex-col items-center justify-between">
       {/* Hero Section */}
@@ -23,6 +31,26 @@ export default function Home() {
             <p className="text-lg leading-8 text-blue-100 mb-8">
               StudyPath.AI leverages cutting-edge Edge AI technology to provide intelligent academic planning tools for university students and hackathon organizers.
             </p>
+            
+            {/* 添加搜索表单 */}
+            <form onSubmit={handleSearch} className="max-w-md mx-auto mb-8">
+              <div className="flex items-center border-2 border-white rounded-lg overflow-hidden">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search for courses or career paths..."
+                  className="w-full px-4 py-2 text-gray-800 focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  className="bg-white text-blue-600 px-6 py-2 font-medium hover:bg-blue-50"
+                >
+                  Search
+                </button>
+              </div>
+            </form>
+            
             <div className="flex justify-center gap-4">
               <Link
                 href="/course-planning"

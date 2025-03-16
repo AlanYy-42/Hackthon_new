@@ -6,6 +6,9 @@ import { Card, Title, BarChart, DonutChart, Button, TextInput } from '@tremor/re
 export default function CoursePlanning() {
   const [programUrl, setProgramUrl] = useState('')
   const [careerPath, setCareerPath] = useState('')
+  const [studentId, setStudentId] = useState('')
+  const [currentSemester, setCurrentSemester] = useState('')
+  const [interests, setInterests] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [courseRecommendations, setCourseRecommendations] = useState<any[]>([])
   const [showRecommendations, setShowRecommendations] = useState(false)
@@ -136,6 +139,30 @@ export default function CoursePlanning() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-blue-900 mb-2">
+                Student ID
+              </label>
+              <TextInput
+                placeholder="Enter your student ID"
+                value={studentId}
+                onChange={(e) => setStudentId(e.target.value)}
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-blue-900 mb-2">
+                Current Semester
+              </label>
+              <TextInput
+                placeholder="e.g., Fall 2025"
+                value={currentSemester}
+                onChange={(e) => setCurrentSemester(e.target.value)}
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-blue-900 mb-2">
                 Please provide your program information (URL)
               </label>
               <TextInput
@@ -155,6 +182,17 @@ export default function CoursePlanning() {
                 value={careerPath}
                 onChange={(e) => setCareerPath(e.target.value)}
                 required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-blue-900 mb-2">
+                Academic Interests
+              </label>
+              <TextInput
+                placeholder="e.g., AI, Web Development, Data Science"
+                value={interests}
+                onChange={(e) => setInterests(e.target.value)}
               />
             </div>
             

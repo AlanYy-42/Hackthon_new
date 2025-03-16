@@ -6,6 +6,10 @@ import { motion } from 'framer-motion'
 
 export default function CareerGoals() {
   const [jobTitles, setJobTitles] = useState('')
+  const [fullName, setFullName] = useState('')
+  const [email, setEmail] = useState('')
+  const [education, setEducation] = useState('')
+  const [experience, setExperience] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showRoadmap, setShowRoadmap] = useState(false)
   const [showForm, setShowForm] = useState(true)
@@ -132,6 +136,43 @@ export default function CareerGoals() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-blue-900 mb-2">
+                Full Name
+              </label>
+              <TextInput
+                placeholder="Enter your full name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-blue-900 mb-2">
+                Email Address
+              </label>
+              <TextInput
+                type="email"
+                placeholder="Enter your email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-blue-900 mb-2">
+                Educational Background
+              </label>
+              <TextInput
+                placeholder="e.g., Bachelor's in Computer Science"
+                value={education}
+                onChange={(e) => setEducation(e.target.value)}
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-blue-900 mb-2">
                 Please enter the job titles you prefer
               </label>
               <TextInput
@@ -139,6 +180,17 @@ export default function CareerGoals() {
                 value={jobTitles}
                 onChange={(e) => setJobTitles(e.target.value)}
                 required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-blue-900 mb-2">
+                Work Experience (Years)
+              </label>
+              <TextInput
+                placeholder="e.g., 2 years in software development"
+                value={experience}
+                onChange={(e) => setExperience(e.target.value)}
               />
             </div>
             
