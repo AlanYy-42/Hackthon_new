@@ -94,12 +94,12 @@ An intelligent academic planning assistant powered by Edge AI technology, provid
 
 MIT License 
 
-### API密钥配置
+### API Key Configuration
 
-本应用使用DeepSeek API进行AI聊天功能。你需要：
+This application uses the DeepSeek API for AI chat functionality. You need to:
 
-1. 在[DeepSeek Platform](https://platform.deepseek.com/)创建一个账户
-2. 生成API密钥
-3. 将API密钥添加到.env文件中的API变量
+1. Create an account on [DeepSeek Platform](https://platform.deepseek.com/)
+2. Generate an API key
+3. Add the API key to the API variable in your .env file
 
-**重要提示：** 不要在代码中硬编码API密钥，也不要将包含真实API密钥的.env文件提交到版本控制系统。 
+**Important Note:** Do not hardcode the API key in your code, and do not commit the .env file containing your real API key to version control systems. 
