@@ -2,6 +2,9 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
+# 添加版本标记以强制更新依赖
+ENV DEPS_VERSION=1
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
