@@ -6,196 +6,29 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
+import matplotlib
+matplotlib.use('Agg')  # 使用非交互式后端
 import matplotlib.pyplot as plt
-import pickle
 import os
 import random
-import sqlite3
-import json
+import io
 
 class CourseRecommender:
     def __init__(self):
-        self.model_path = os.path.join(os.path.dirname(__file__), 'models', 'course_recommender.pkl')
-        self.scaler_path = os.path.join(os.path.dirname(__file__), 'models', 'scaler.pkl')
-        self.data_path = os.path.join(os.path.dirname(__file__), 'models', 'training_data.pkl')
-        self.courses_path = os.path.join(os.path.dirname(__file__), 'models', 'courses.pkl')
-        self.prereqs_path = os.path.join(os.path.dirname(__file__), 'models', 'prerequisites.pkl')
+        # 完全使用内存存储
+        self.model = None
+        self.preprocessor = None
+        self.training_data = None
+        self.courses = None
+        self.prerequisites = None
         
-        # 使用与 app.py 相同的数据库路径
-        basedir = os.path.abspath(os.path.dirname(__file__))
-        self.db_path = os.path.join(basedir, "instance", "studypath.db")
+        # 不再使用文件路径
+        print("Generating synthetic data in memory")
+        self.generate_synthetic_data()
+        self.train_model()
         
-        # Create models directory if it doesn't exist
-        os.makedirs(os.path.dirname(self.model_path), exist_ok=True)
-        
-        # 尝试从数据库加载训练数据
-        if self._load_training_data_from_db():
-            print("Successfully loaded training data from database")
-            # 如果模型文件不存在，则训练模型
-            if not (os.path.exists(self.model_path) and os.path.exists(self.scaler_path)):
-                self.train_model()
-        # 如果数据库中没有训练数据，则生成合成数据并训练模型
-        else:
-            print("No training data found in database, generating synthetic data")
-            # Generate synthetic data and train a model
-            self.generate_synthetic_data()
-            self.train_model()
-            # 将训练数据保存到数据库
-            self.save_training_data_to_db()
-    
-    def _load_training_data_from_db(self):
-        """从SQLite数据库加载训练数据"""
-        try:
-            # 确保数据库目录存在
-            os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-            
-            # 检查数据库是否存在
-            if not os.path.exists(self.db_path):
-                return False
-            
-            # 连接数据库
-            conn = sqlite3.connect(self.db_path)
-            
-            # 检查是否存在训练数据表
-            cursor = conn.cursor()
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='ml_training_data'")
-            if not cursor.fetchone():
-                conn.close()
-                return False
-            
-            # 加载训练数据
-            self.training_data = pd.read_sql("SELECT * FROM ml_training_data", conn)
-            
-            # 加载课程数据
-            cursor.execute("SELECT * FROM ml_courses")
-            courses_data = cursor.fetchall()
-            if not courses_data:
-                conn.close()
-                return False
-            
-            # 重建课程字典
-            self.courses = {}
-            for row in courses_data:
-                major, course_type, course_code = row
-                if major not in self.courses:
-                    self.courses[major] = {"core": [], "electives": [], "related": []}
-                self.courses[major][course_type].append(course_code)
-            
-            # 加载先修课程关系
-            cursor.execute("SELECT * FROM ml_prerequisites")
-            prereqs_data = cursor.fetchall()
-            
-            # 重建先修课程字典
-            self.prerequisites = {}
-            for row in prereqs_data:
-                course, prereq = row
-                if course not in self.prerequisites:
-                    self.prerequisites[course] = []
-                self.prerequisites[course].append(prereq)
-            
-            conn.close()
-            
-            # 将数据保存为pickle文件以便快速访问
-            pickle.dump(self.training_data, open(self.data_path, 'wb'))
-            pickle.dump(self.courses, open(self.courses_path, 'wb'))
-            pickle.dump(self.prerequisites, open(self.prereqs_path, 'wb'))
-            
-            return True
-        except Exception as e:
-            print(f"Error loading training data from database: {str(e)}")
-            return False
-    
-    def save_training_data_to_db(self):
-        """将训练数据保存到SQLite数据库"""
-        try:
-            # 确保数据库目录存在
-            os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-            
-            # 连接数据库
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # 创建训练数据表
-            cursor.execute('''
-            CREATE TABLE IF NOT EXISTS ml_training_data (
-                student_id INTEGER,
-                major TEXT,
-                semester INTEGER,
-                gpa REAL,
-                num_completed_courses INTEGER,
-                completed_courses TEXT,
-                next_courses TEXT
-            )
-            ''')
-            
-            # 创建课程表
-            cursor.execute('''
-            CREATE TABLE IF NOT EXISTS ml_courses (
-                major TEXT,
-                course_type TEXT,
-                course_code TEXT,
-                PRIMARY KEY (major, course_type, course_code)
-            )
-            ''')
-            
-            # 创建先修课程关系表
-            cursor.execute('''
-            CREATE TABLE IF NOT EXISTS ml_prerequisites (
-                course TEXT,
-                prerequisite TEXT,
-                PRIMARY KEY (course, prerequisite)
-            )
-            ''')
-            
-            # 清空现有数据
-            cursor.execute("DELETE FROM ml_training_data")
-            cursor.execute("DELETE FROM ml_courses")
-            cursor.execute("DELETE FROM ml_prerequisites")
-            
-            # 保存训练数据
-            for _, row in self.training_data.iterrows():
-                cursor.execute(
-                    "INSERT INTO ml_training_data VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    (
-                        row['student_id'],
-                        row['major'],
-                        row['semester'],
-                        row['gpa'],
-                        row['num_completed_courses'],
-                        json.dumps(row['completed_courses']),
-                        json.dumps(row['next_courses'])
-                    )
-                )
-            
-            # 保存课程数据
-            for major, courses in self.courses.items():
-                for course_type, course_list in courses.items():
-                    for course in course_list:
-                        cursor.execute(
-                            "INSERT INTO ml_courses VALUES (?, ?, ?)",
-                            (major, course_type, course)
-                        )
-            
-            # 保存先修课程关系
-            for course, prereqs in self.prerequisites.items():
-                for prereq in prereqs:
-                    cursor.execute(
-                        "INSERT INTO ml_prerequisites VALUES (?, ?)",
-                        (course, prereq)
-                    )
-            
-            # 提交更改
-            conn.commit()
-            conn.close()
-            
-            print("Training data saved to database successfully")
-            return True
-        except Exception as e:
-            print(f"Error saving training data to database: {str(e)}")
-            return False
-    
     def generate_synthetic_data(self):
-        """Generate synthetic student data and course information for training"""
+        """生成合成训练数据"""
         # Define course catalog
         majors = ["CS", "MATH", "ENG", "BIO", "PHYS", "CHEM", "ECON", "PSYCH"]
         
@@ -242,8 +75,8 @@ class CourseRecommender:
                 self.prerequisites[related] = []
         
         # Generate synthetic student data
-        num_students = 500
-        student_data = []
+        num_students = 1000
+        self.training_data = []
         
         for i in range(num_students):
             # Randomly select a major
@@ -255,278 +88,297 @@ class CourseRecommender:
             # Randomly select GPA (2.0-4.0)
             gpa = round(random.uniform(2.0, 4.0), 2)
             
-            # 根据先修课程关系确定已完成的课程
-            completed_courses = self._generate_completed_courses(major, semester)
+            # Select completed courses based on semester
+            all_courses = self.courses[major]["core"] + self.courses[major]["electives"] + self.courses[major]["related"]
             
-            # Create feature vector
-            student_record = {
-                "student_id": i,
+            # The higher the semester, the more courses completed
+            num_completed = min(len(all_courses), int(semester * 1.5))
+            
+            # Ensure prerequisites are respected
+            completed_courses = []
+            available_courses = [c for c in all_courses if not self.prerequisites.get(c, [])]  # Start with courses that have no prerequisites
+            
+            while len(completed_courses) < num_completed and available_courses:
+                # Select a random available course
+                course = random.choice(available_courses)
+                completed_courses.append(course)
+                available_courses.remove(course)
+                
+                # Add new available courses based on prerequisites
+                for c in all_courses:
+                    if c not in completed_courses and c not in available_courses:
+                        prereqs = self.prerequisites.get(c, [])
+                        if all(p in completed_courses for p in prereqs):
+                            available_courses.append(c)
+            
+            # Generate grades for completed courses (higher GPA = higher grades)
+            grades = {}
+            for course in completed_courses:
+                # Base grade on student's GPA with some randomness
+                mean_grade = max(60, min(100, 60 + (gpa - 2.0) * 20))  # Map GPA 2.0-4.0 to grade 60-100
+                grade = max(60, min(100, int(random.gauss(mean_grade, 10))))  # Add normal distribution noise
+                grades[course] = grade
+            
+            # Add to training data
+            self.training_data.append({
+                "student_id": i + 1,
                 "major": major,
                 "semester": semester,
                 "gpa": gpa,
                 "completed_courses": completed_courses,
-                "num_completed_courses": len(completed_courses)
-            }
-            
-            # 根据先修课程关系确定下一步可以学习的课程
-            next_courses = self._get_next_courses(completed_courses, major)
-            student_record["next_courses"] = next_courses[:3]  # Top 3 recommended courses
-            
-            student_data.append(student_record)
-        
-        self.training_data = pd.DataFrame(student_data)
-        
-        # Save the synthetic data and course catalog
-        pickle.dump(self.training_data, open(self.data_path, 'wb'))
-        pickle.dump(self.courses, open(self.courses_path, 'wb'))
-        pickle.dump(self.prerequisites, open(self.prereqs_path, 'wb'))
-    
-    def _generate_completed_courses(self, major, semester):
-        """根据学期和先修课程关系生成已完成的课程列表"""
-        completed_courses = []
-        
-        # 获取该专业的所有课程
-        all_courses = (self.courses[major]["core"] + 
-                      self.courses[major]["electives"] + 
-                      self.courses[major]["related"])
-        
-        # 按照先修课程关系排序课程
-        sorted_courses = self._sort_courses_by_prerequisites(all_courses)
-        
-        # 根据学期确定已完成的课程数量（每学期平均完成3门课程）
-        num_completed = min(semester * 3, len(sorted_courses))
-        
-        # 选择前N门课程作为已完成课程
-        completed_courses = sorted_courses[:num_completed]
-        
-        return completed_courses
-    
-    def _sort_courses_by_prerequisites(self, courses):
-        """根据先修课程关系对课程进行拓扑排序"""
-        # 创建课程依赖图
-        graph = {course: self.prerequisites.get(course, []) for course in courses}
-        
-        # 拓扑排序
-        visited = set()
-        temp_visited = set()
-        result = []
-        
-        def dfs(node):
-            if node in temp_visited:
-                # 检测到循环依赖，跳过
-                return
-            if node in visited:
-                return
-            
-            temp_visited.add(node)
-            
-            for prereq in graph.get(node, []):
-                if prereq in courses:  # 只考虑列表中的课程
-                    dfs(prereq)
-            
-            temp_visited.remove(node)
-            visited.add(node)
-            result.append(node)
-        
-        # 对每个课程进行DFS
-        for course in courses:
-            if course not in visited:
-                dfs(course)
-        
-        # 反转结果，使得先修课程在前
-        return result[::-1]
-    
-    def _get_next_courses(self, completed_courses, major):
-        """根据已完成的课程和先修课程关系，获取下一步可以学习的课程"""
-        next_courses = []
-        
-        # 获取该专业的所有课程
-        all_courses = (self.courses[major]["core"] + 
-                      self.courses[major]["electives"] + 
-                      self.courses[major]["related"])
-        
-        # 检查每门课程是否可以学习（已满足先修要求且尚未学习）
-        for course in all_courses:
-            if course not in completed_courses:
-                prereqs = self.prerequisites.get(course, [])
-                if all(prereq in completed_courses for prereq in prereqs):
-                    next_courses.append(course)
-        
-        # 优先推荐核心课程
-        core_next = [c for c in next_courses if c in self.courses[major]["core"]]
-        elective_next = [c for c in next_courses if c in self.courses[major]["electives"]]
-        related_next = [c for c in next_courses if c in self.courses[major]["related"]]
-        
-        # 按优先级排序
-        prioritized_next = core_next + elective_next + related_next
-        
-        return prioritized_next[:5]  # 返回最多5门课程
+                "grades": grades
+            })
     
     def train_model(self):
-        """Train a KNN model on the synthetic data"""
-        # Extract features for training
-        X = self.training_data[['major', 'semester', 'gpa', 'num_completed_courses']]
+        """训练推荐模型"""
+        # Extract features from training data
+        X = []
+        y = []
         
-        # 为了将已完成的课程作为特征，我们需要创建一个课程-学生矩阵
-        # 首先获取所有可能的课程
-        all_possible_courses = set()
-        for major in self.courses:
-            all_possible_courses.update(self.courses[major]["core"])
-            all_possible_courses.update(self.courses[major]["electives"])
-            all_possible_courses.update(self.courses[major]["related"])
-        
-        # 为每个学生创建一个课程完成向量
-        course_completion = pd.DataFrame(0, index=self.training_data.index, 
-                                        columns=sorted(list(all_possible_courses)))
-        
-        # 填充课程完成矩阵
-        for idx, row in self.training_data.iterrows():
-            for course in row['completed_courses']:
-                if course in course_completion.columns:
-                    course_completion.loc[idx, course] = 1
-        
-        # 创建一个预处理器，处理分类特征和数值特征
-        preprocessor = ColumnTransformer(
-            transformers=[
-                ('cat', OneHotEncoder(handle_unknown='ignore'), ['major']),
-                ('num', StandardScaler(), ['semester', 'gpa', 'num_completed_courses'])
-            ])
-        
-        # 预处理基本特征
-        X_basic_processed = preprocessor.fit_transform(X)
-        
-        # 将课程完成矩阵与基本特征合并
-        X_course_processed = course_completion.values
-        
-        # 合并所有特征
-        X_processed = np.hstack((X_basic_processed, X_course_processed))
-        
-        # 创建并训练KNN模型
-        knn = NearestNeighbors(n_neighbors=5, algorithm='auto')
-        self.model = knn.fit(X_processed)
-        
-        # 保存预处理器和模型
-        self.preprocessor = preprocessor
-        pickle.dump(self.model, open(self.model_path, 'wb'))
-        pickle.dump(self.preprocessor, open(self.scaler_path, 'wb'))
-        
-        # 可视化学生数据（可选）
-        self._visualize_student_data(X_processed)
-    
-    def _visualize_student_data(self, X_processed, method='tsne'):
-        """使用TSNE或PCA可视化学生数据"""
-        try:
-            # 降维到2D
-            if method == 'tsne':
-                X_embedded = TSNE(n_components=2, perplexity=30, random_state=42).fit_transform(X_processed)
-                title = "Student Data Visualization (t-SNE)"
-            else:  # PCA
-                X_embedded = PCA(n_components=2, random_state=42).fit_transform(X_processed)
-                title = "Student Data Visualization (PCA)"
+        for student in self.training_data:
+            # Create features
+            features = [
+                student["semester"],
+                student["gpa"],
+                len(student["completed_courses"]),
+                # Average grade
+                sum(student["grades"].values()) / len(student["grades"]) if student["grades"] else 0
+            ]
             
-            # 创建图表
+            # One-hot encode major
+            major_feature = [0] * 8  # Assuming 8 majors
+            major_idx = ["CS", "MATH", "ENG", "BIO", "PHYS", "CHEM", "ECON", "PSYCH"].index(student["major"])
+            major_feature[major_idx] = 1
+            
+            # Combine all features
+            X.append(features + major_feature)
+            
+            # Target is the next course they took (last one in their list)
+            if student["completed_courses"]:
+                y.append(student["completed_courses"][-1])
+            else:
+                y.append("")
+        
+        # Create preprocessor
+        self.preprocessor = StandardScaler()
+        X_scaled = self.preprocessor.fit_transform(X)
+        
+        # Train nearest neighbors model
+        self.model = NearestNeighbors(n_neighbors=10, algorithm='ball_tree')
+        self.model.fit(X_scaled)
+    
+    def visualize_student_data(self):
+        """Visualize the synthetic student data"""
+        try:
+            # Extract features from training data
+            X = []
+            majors = []
+            
+            for student in self.training_data:
+                # Create features
+                features = [
+                    student["semester"],
+                    student["gpa"],
+                    len(student["completed_courses"]),
+                    # Average grade
+                    sum(student["grades"].values()) / len(student["grades"]) if student["grades"] else 0
+                ]
+                
+                X.append(features)
+                majors.append(student["major"])
+            
+            # Convert to numpy array
+            X = np.array(X)
+            
+            # Apply t-SNE to reduce dimensions for visualization
+            X_embedded = TSNE(n_components=2, random_state=42).fit_transform(X)
+            
+            # Create a figure
             plt.figure(figsize=(10, 8))
             
-            # 为不同专业使用不同颜色
-            majors = self.training_data['major'].unique()
-            colors = plt.cm.rainbow(np.linspace(0, 1, len(majors)))
+            # Define colors for different majors
+            unique_majors = list(set(majors))
+            colors = plt.cm.rainbow(np.linspace(0, 1, len(unique_majors)))
             
-            for i, major in enumerate(majors):
-                # 获取该专业的学生索引
-                indices = self.training_data[self.training_data['major'] == major].index
-                
-                # 绘制该专业的学生
+            # Plot each major with a different color
+            for i, major in enumerate(unique_majors):
+                indices = [j for j, m in enumerate(majors) if m == major]
                 plt.scatter(
-                    X_embedded[indices, 0], 
+                    X_embedded[indices, 0],
                     X_embedded[indices, 1],
                     c=[colors[i]],
                     label=major,
                     alpha=0.7
                 )
             
-            plt.title(title)
+            plt.title("t-SNE Visualization of Student Data")
             plt.legend()
+            plt.tight_layout()
             
-            # 保存图表
-            vis_dir = os.path.join(os.path.dirname(__file__), 'visualizations')
-            os.makedirs(vis_dir, exist_ok=True)
-            plt.savefig(os.path.join(vis_dir, f'student_data_{method}.png'))
+            # 使用内存缓冲区而不是文件
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png')
+            buf.seek(0)
             plt.close()
             
-            print(f"Visualization saved to {vis_dir}/student_data_{method}.png")
+            return buf
         except Exception as e:
-            print(f"Visualization failed: {str(e)}")
+            print(f"Error generating visualization: {str(e)}")
+            return None
     
-    def recommend_courses(self, student_data):
-        """
-        Recommend courses based on student data using KNN
-        
-        Args:
-            student_data: Dictionary containing student information
-                - major: Student's major
-                - semester: Current semester
-                - completed_courses: List of completed course codes
-                - gpa: Current GPA
-        
-        Returns:
-            List of recommended course codes
-        """
-        major = student_data.get('major', 'CS')  # Default to CS if not provided
-        semester = student_data.get('semester', 1)  # Default to 1st semester if not provided
-        completed_courses = student_data.get('completed_courses', [])
-        gpa = student_data.get('gpa', 3.0)  # Default to 3.0 if not provided
-        
-        # 创建学生特征向量
-        student_features = pd.DataFrame({
-            'major': [major],
-            'semester': [semester],
-            'gpa': [gpa],
-            'num_completed_courses': [len(completed_courses)]
-        })
-        
-        # 预处理基本特征
-        student_basic_processed = self.preprocessor.transform(student_features)
-        
-        # 创建课程完成向量
-        all_possible_courses = set()
-        for m in self.courses:
-            all_possible_courses.update(self.courses[m]["core"])
-            all_possible_courses.update(self.courses[m]["electives"])
-            all_possible_courses.update(self.courses[m]["related"])
-        
-        course_completion = np.zeros(len(all_possible_courses))
-        for i, course in enumerate(sorted(list(all_possible_courses))):
-            if course in completed_courses:
-                course_completion[i] = 1
-        
-        # 合并所有特征
-        student_processed = np.hstack((student_basic_processed, course_completion.reshape(1, -1)))
-        
-        # 找到相似的学生
-        distances, indices = self.model.kneighbors(student_processed)
-        
-        # 从相似学生中获取课程推荐
-        final_recommendations = []
-        seen_courses = set()  # 用于去重
-        
-        for idx in indices[0]:
-            similar_student = self.training_data.iloc[idx]
-            next_courses = similar_student['next_courses']
+    def get_recommendations(self, student_id=None, major=None, completed_courses=[], student_data=None):
+        """Get course recommendations for a student"""
+        if student_id and student_id in [s["student_id"] for s in self.training_data]:
+            # Get recommendations for an existing student
+            student = next(s for s in self.training_data if s["student_id"] == student_id)
             
-            for course in next_courses:
-                # 检查课程是否已完成、是否已在推荐列表中、是否满足先修要求
-                if (course not in completed_courses and 
-                    course not in seen_courses and 
-                    self._check_prerequisites_met(course, completed_courses)):
-                    seen_courses.add(course)
-                    final_recommendations.append(course)
+            # Extract student features
+            features = [
+                student["semester"],
+                student["gpa"],
+                len(student["completed_courses"]),
+                sum(student["grades"].values()) / len(student["grades"]) if student["grades"] else 0
+            ]
             
-            # 只推荐最多5门课
-            if len(final_recommendations) >= 5:
-                break
+            # One-hot encode major
+            major_feature = [0] * 8  # Assuming 8 majors
+            major_idx = ["CS", "MATH", "ENG", "BIO", "PHYS", "CHEM", "ECON", "PSYCH"].index(student["major"])
+            major_feature[major_idx] = 1
+            
+            # Combine all features
+            X = [features + major_feature]
+            
+            # Scale features
+            X_scaled = self.preprocessor.transform(X)
+            
+            # Find nearest neighbors
+            distances, indices = self.model.kneighbors(X_scaled)
+            
+            # Get recommendations based on what similar students took
+            recommendations = []
+            seen_courses = set(student["completed_courses"])
+            
+            for idx in indices[0]:
+                similar_student = self.training_data[idx]
+                for course in similar_student["completed_courses"]:
+                    if course not in seen_courses:
+                        seen_courses.add(course)
+                        recommendations.append(course)
+            
+            return recommendations[:5]  # Return top 5 recommendations
+        
+        elif major:
+            # Generate recommendations for a new student with a specific major
+            if not completed_courses:
+                # If no courses completed, recommend first core course
+                return self.courses[major]["core"][:1]
+            
+            # Get all courses for this major
+            all_courses = self.courses[major]["core"] + self.courses[major]["electives"] + self.courses[major]["related"]
+            
+            # Find courses that haven't been taken yet but prerequisites are met
+            available_courses = []
+            for course in all_courses:
+                if course not in completed_courses:
+                    prereqs = self.prerequisites.get(course, [])
+                    if all(p in completed_courses for p in prereqs):
+                        available_courses.append(course)
+            
+            # Sort by course number (core courses first)
+            available_courses.sort(key=lambda x: int(''.join(filter(str.isdigit, x))))
+            
+            return available_courses[:5]  # Return top 5 recommendations
+        
+        else:
+            # Default recommendations (CS major)
+            return self.courses["CS"]["core"][:5]
+    
+    def _get_next_courses(self, completed_courses, major):
+        """使用规则方法获取下一步可学习的课程"""
+        all_courses = self.courses[major]["core"] + self.courses[major]["electives"] + self.courses[major]["related"]
+        
+        # 找出所有尚未完成但先修课程要求已满足的课程
+        available_courses = []
+        for course in all_courses:
+            if course not in completed_courses:
+                prereqs = self.prerequisites.get(course, [])
+                if all(p in completed_courses for p in prereqs):
+                    available_courses.append(course)
+        
+        # 按课程编号排序（核心课程优先）
+        available_courses.sort(key=lambda x: int(''.join(filter(str.isdigit, x))) if any(c.isdigit() for c in x) else 999)
+        
+        return available_courses
+    
+    def recommend_courses(self, student_id=None, major=None, completed_courses=None, num_recommendations=5):
+        """推荐课程给学生"""
+        if not major and not student_id:
+            return []
+        
+        if not completed_courses:
+            completed_courses = []
+        
+        # 首先尝试使用协同过滤推荐
+        if student_id is not None:
+            # 为特定学生ID获取推荐
+            # 从训练数据中找到该学生
+            for student in self.training_data:
+                if student["student_id"] == student_id:
+                    # 提取学生已完成的课程
+                    completed_courses = student["completed_courses"]
+                    major = student["major"]
+                    break
+        
+        # 如果没有完成任何课程，推荐该专业的第一门核心课程
+        if not completed_courses and major:
+            return self.courses[major]["core"][:num_recommendations]
+        
+        # 提取特征
+        if major:
+            # 为新学生生成特征
+            features = [
+                len(completed_courses),  # 用已完成课程数替代学期
+                3.0,  # 默认GPA
+                len(completed_courses),
+                80.0  # 默认平均分
+            ]
+            
+            # One-hot编码专业
+            major_feature = [0] * 8  # 假设有8个专业
+            try:
+                major_idx = ["CS", "MATH", "ENG", "BIO", "PHYS", "CHEM", "ECON", "PSYCH"].index(major)
+                major_feature[major_idx] = 1
+            except ValueError:
+                # 如果专业不在列表中，使用CS作为默认
+                major_idx = 0
+                major_feature[major_idx] = 1
+            
+            # 组合所有特征
+            X = [features + major_feature]
+            
+            # 缩放特征
+            X_scaled = self.preprocessor.transform(X)
+            
+            # 找到最近邻
+            distances, indices = self.model.kneighbors(X_scaled)
+            
+            # 根据相似学生获取推荐
+            final_recommendations = []
+            seen_courses = set(completed_courses)
+            
+            for idx in indices[0]:
+                similar_student = self.training_data[idx]
+                for course in similar_student["completed_courses"]:
+                    if course not in seen_courses and self._check_prerequisites_met(course, completed_courses):
+                        seen_courses.add(course)
+                        final_recommendations.append(course)
+                        
+                        # 只推荐最多5门课
+                        if len(final_recommendations) >= num_recommendations:
+                            break
         
         # 如果从相似学生中没有获得足够的推荐，使用基于规则的方法补充
-        if len(final_recommendations) < 5:
+        if len(final_recommendations) < num_recommendations:
             # 获取下一步可以学习的课程
             rule_based_recommendations = self._get_next_courses(completed_courses, major)
             
@@ -537,10 +389,10 @@ class CourseRecommender:
                     final_recommendations.append(course)
                     
                     # 只推荐最多5门课
-                    if len(final_recommendations) >= 5:
+                    if len(final_recommendations) >= num_recommendations:
                         break
         
-        return final_recommendations[:5]  # 确保最多返回5门课程
+        return final_recommendations[:num_recommendations]  # 确保最多返回5门课程
     
     def _check_prerequisites_met(self, course, completed_courses):
         """检查是否满足课程的先修要求"""
@@ -566,8 +418,6 @@ class CourseRecommender:
             level = "Fundamentals of"
         elif course_num.startswith('3'):
             level = "Advanced"
-        elif course_num.startswith('4'):
-            level = "Special Topics in"
         else:
             level = "Topics in"
         
