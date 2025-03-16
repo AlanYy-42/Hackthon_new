@@ -9,22 +9,9 @@ load_dotenv()
 # 添加延迟，确保环境变量有时间加载
 time.sleep(1)
 
-# 尝试多种方式获取API密钥
-GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
-if not GOOGLE_API_KEY:
-    GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
-    
-# 如果仍然没有找到，尝试从文件读取
-if not GOOGLE_API_KEY:
-    try:
-        with open('.env', 'r') as f:
-            for line in f:
-                if line.startswith('GOOGLE_API_KEY='):
-                    GOOGLE_API_KEY = line.strip().split('=', 1)[1].strip('"\'')
-                    os.environ['GOOGLE_API_KEY'] = GOOGLE_API_KEY
-                    break
-    except Exception as e:
-        print(f"Error reading .env file: {str(e)}")
+# 直接设置API密钥 - 这是Hugging Face空间提供的密钥
+GOOGLE_API_KEY = "AIzaSyDJC5a7hQxfvXRLNFzpTGfnAdOGjLYjHpI"
+os.environ['GOOGLE_API_KEY'] = GOOGLE_API_KEY
 
 print("GOOGLE_API_KEY loaded:", bool(GOOGLE_API_KEY))  # 只打印是否存在，不打印实际值
 
@@ -57,13 +44,6 @@ class ChatService:
                 print("Creating ChatService instance...")
                 # 确保API密钥已配置
                 genai.configure(api_key=self.api_key)
-                
-                # 列出可用模型
-                try:
-                    models = genai.list_models()
-                    print("Available models:", [m.name for m in models])
-                except Exception as e:
-                    print(f"Error listing models: {str(e)}")
                 
                 # 尝试使用不同的模型名称格式
                 model_names = [
