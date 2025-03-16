@@ -6,7 +6,7 @@ load_dotenv()
 
 # 使用Hugging Face的API
 HF_API_KEY = os.getenv('HF_DEEPSEEK_API_KEY')  # 复用已有的环境变量
-HF_API_URL = "https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium"  # 使用完全开放的模型
+HF_API_URL = "https://api-inference.huggingface.co/models/gpt2"  # 使用最基础的GPT-2模型
 
 class ChatService:
     def __init__(self):
@@ -15,8 +15,7 @@ class ChatService:
             self.headers = None
         else:
             self.headers = {
-                "Authorization": f"Bearer {HF_API_KEY}",
-                "Content-Type": "application/json"
+                "Authorization": f"Bearer {HF_API_KEY}"  # 移除Content-Type
             }
     
     def chat(self, message):
@@ -24,22 +23,16 @@ class ChatService:
             return "API密钥未配置，请联系管理员设置API密钥。"
             
         try:
-            # 直接使用文本作为输入
-            payload = {
-                "inputs": message
-            }
-            
-            print(f"Sending request to Hugging Face API")  # 调试日志
-            print(f"Request payload: {payload}")  # 调试日志
-            
+            # 使用纯文本作为输入
             response = requests.post(
                 HF_API_URL,
                 headers=self.headers,
-                json=payload,
+                json={"inputs": message},
                 timeout=30
             )
             
             print(f"Response status code: {response.status_code}")  # 调试日志
+            print(f"Response headers: {response.headers}")  # 添加响应头信息的调试
             
             if response.status_code == 401:
                 print("API密钥无效或已过期")
@@ -48,21 +41,22 @@ class ChatService:
                 print("模型正在加载中")
                 return "模型正在加载中，请稍后再试。"
             
+            # 打印原始响应内容
+            print(f"Raw response: {response.text}")
+            
+            # 尝试解析JSON响应
             try:
-                print(f"Response content: {response.text}")  # 调试日志
-            except:
-                print("Unable to print response content")
+                data = response.json()
+                print(f"Parsed JSON response: {data}")
                 
-            response.raise_for_status()
-            data = response.json()
-            
-            print(f"Parsed response data: {data}")  # 调试日志
-            
-            # 直接返回生成的文本
-            if isinstance(data, list):
-                return data[0]
-            else:
-                return str(data)
+                if isinstance(data, list) and len(data) > 0:
+                    return data[0].get('generated_text', '抱歉，未能获取到有效回复。')
+                else:
+                    return str(data)
+            except Exception as e:
+                print(f"Error parsing JSON: {e}")
+                # 如果JSON解析失败，直接返回文本响应
+                return response.text if response.text else "抱歉，未能获取到有效回复。"
             
         except requests.exceptions.RequestException as e:
             print(f"Error calling Hugging Face API: {str(e)}")
